@@ -1,63 +1,60 @@
-// api/telegram.js
 export default async function handler(request, response) {
-  // 1. Pastikan ini request POST dari Telegram
-  if (request.method !== 'POST') {
-    return response.status(405).send('Method Not Allowed');
-  }
+  if (request.method !== 'POST') return response.status(405).send('Method Not Allowed');
 
   const { message } = request.body;
-
-  // Jika tidak ada pesan teks, abaikan
-  if (!message || !message.text) {
-    return response.status(200).send('OK');
-  }
+  if (!message) return response.status(200).send('OK');
 
   const chatId = message.chat.id;
-  const userText = message.text;
-
-  // 2. Ambil API Key dari Environment Variable Vercel
   const groqApiKey = process.env.GROQ_API_KEY;
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  
+  // Ambil teks (bisa dari chat biasa, atau caption di gambar/video)
+  const userText = message.text || message.caption || "";
+  
+  // Deteksi jika user mengirim audio
+  const isAudio = message.audio || message.voice;
 
-  if (!groqApiKey || !telegramToken) {
-    console.error('API Key atau Token Bot belum diset.');
-    return response.status(500).send('Configuration Error');
-  }
+  let botReply = "";
 
   try {
-    // 3. Kirim pesan user ke Groq API
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        // Kamu bisa ganti model di sini
-        model: 'openai/gpt-oss-120b', 
-        messages: [
-          { role: 'system', content: 'Kamu adalah asisten AI yang membantu untuk aplikasi edit video VEdit. Jawab dengan singkat dan ramah.' },
-          { role: 'user', content: userText }
-        ],
-        temperature: 0.7,
-        max_tokens: 1024
-      })
-    });
+    if (isAudio) {
+      // Kalau yang dikirim audio, balas dengan pesan konfirmasi
+      botReply = "Wih, musiknya udah masuk nih! 🎵 Sekarang kirim videonya (boleh pakai caption instruksi editnya) biar aku gabungkan.";
+      
+    } else if (userText) {
+      // Kalau ada teks atau caption, kirim ke Groq AI
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b', 
+          messages: [
+            { role: 'system', content: 'Kamu adalah asisten editor video AI. User mungkin mengirim gambar/video dengan instruksi. Jawab dengan ramah dan konfirmasi instruksinya.' },
+            { role: 'user', content: userText }
+          ],
+          temperature: 0.7,
+        })
+      });
 
-    if (!groqResponse.ok) {
-      throw new Error(`Groq Error: ${groqResponse.status}`);
+      const groqData = await groqResponse.json();
+      botReply = groqData.choices[0]?.message?.content || 'Aku mengerti instruksinya, tapi otakku agak bingung.';
+
+    } else {
+      // Kalau kirim media tanpa teks sama sekali
+      botReply = "Gambar/videonya udah aku terima. Tapi tolong kasih caption instruksi ya, mau diapain ini?";
     }
 
-    const groqData = await groqResponse.json();
-    const aiReply = groqData.choices[0]?.message?.content || 'Maaf, aku tidak bisa menjawab itu.';
-
-    // 4. Kirim balik jawaban AI ke Telegram
+    // Kirim balik ke Telegram
     await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: aiReply
+        text: botReply,
+        reply_to_message_id: message.message_id
       })
     });
 
@@ -65,15 +62,6 @@ export default async function handler(request, response) {
 
   } catch (error) {
     console.error('Error:', error);
-    // Kirim pesan error ke user jika AI gagal
-    await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: 'Maaf, otak AI-ku sedang sibuk. Coba lagi nanti ya!'
-      })
-    });
     return response.status(500).send('Error');
   }
 }
