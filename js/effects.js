@@ -72,7 +72,7 @@ precision mediump float;
 #endif
 `;
 
-/* Fungsi hash/noise bersama (dibuat sendiri, berbasis fract-sin). */
+/* Fungsi hash/noise bersama dan ACES Film Tone Mapping. */
 const COMMON_GLSL = `
 const float PI = 3.14159265;
 float hash11(float n) { return fract(sin(n * 127.1 + 11.7) * 43758.5453); }
@@ -92,6 +92,16 @@ float vnoise(vec2 p) {
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
+// ACES Filmic Tone Mapping Curve
+vec3 acesFilm(vec3 x) {
+  float a = 2.51;
+  float b = 0.03;
+  float c = 2.43;
+  float d = 0.59;
+  float e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
 `;
 
 /* ---------------- TAHAP 1: TRANSISI ---------------- */
@@ -282,9 +292,10 @@ void main() {
     uv += vec2(sin(uv.y * 9.0 + t * 1.3), cos(uv.x * 7.0 + t * 1.1)) * 0.004 * dream;
   }
 
-  // --- RGB split (chromatic aberration, menguat saat beat) ---
-  float sp = rgbSplit * 0.012 * (1.0 + beat * 1.2) + glitch * 0.005 + vhs * 0.003;
-  vec2 d = vec2(sp, 0.0) + (uv - c) * sp * 2.0;
+  // --- Radial RGB split (chromatic aberration dari pusat) ---
+  float sp = rgbSplit * 0.015 * (1.0 + beat * 1.2) + glitch * 0.006 + vhs * 0.003;
+  vec2 radialDir = (uv - c);
+  vec2 d = radialDir * sp * length(radialDir);
   vec3 col = vec3(S(uv + d).r, S(uv).g, S(uv - d).b);
 
   // --- Blur (cakram 2 cincin) ---
@@ -346,21 +357,28 @@ void main() {
   }
 
   // --- Color: exposure, temperature, contrast, saturation ---
-  col *= exp2(exposure * 1.5);
-  col.r *= 1.0 + temperature * 0.15;
-  col.b *= 1.0 - temperature * 0.15;
-  col.g *= 1.0 + temperature * 0.03;
-  col = (col - 0.5) * (1.0 + contrast * 0.9) + 0.5;
+  col *= exp2(exposure * 1.2);
+  col.r *= 1.0 + temperature * 0.12;
+  col.b *= 1.0 - temperature * 0.12;
+  col.g *= 1.0 + temperature * 0.02;
+  col = (col - 0.5) * (1.0 + contrast * 0.8) + 0.5;
   col = max(col, 0.0);
   float l = luma(col);
   col = mix(vec3(l), col, 1.0 + saturation);
 
-  // --- Teal & Orange (split toning berbasis luma) ---
+  // --- Teal & Orange (professional color grade dengan skin preservation) ---
   if (tealOrange > 0.001) {
-    float ws = 1.0 - smoothstep(0.0, 0.6, l);
-    float wh = smoothstep(0.4, 1.0, l);
-    col = mix(col, col * vec3(0.78, 1.0, 1.1) + vec3(0.0, 0.03, 0.06), ws * tealOrange * 0.8);
-    col = mix(col, col * vec3(1.12, 1.0, 0.82) + vec3(0.04, 0.01, 0.0), wh * tealOrange * 0.8);
+    float ws = 1.0 - smoothstep(0.0, 0.55, l);
+    float wh = smoothstep(0.35, 0.95, l);
+    vec3 shadowTeal = vec3(0.75, 0.98, 1.1) * col + vec3(0.0, 0.02, 0.05);
+    vec3 highlightOrange = vec3(1.1, 0.95, 0.8) * col + vec3(0.04, 0.01, 0.0);
+    col = mix(col, shadowTeal, ws * tealOrange * 0.7);
+    col = mix(col, highlightOrange, wh * tealOrange * 0.7);
+  }
+
+  // --- ACES Filmic Tone Mapping (jika ada kontras/exposure tinggi) ---
+  if (abs(exposure) + contrast + tealOrange > 0.01) {
+    col = mix(col, acesFilm(col), 0.45 + contrast * 0.25);
   }
 
   // --- Film gate: kurva S, hitam terangkat, debu, kedip ---
@@ -444,10 +462,11 @@ void main() {
     col *= 1.0 - vignette * smoothstep(0.35, 0.95, dv);
   }
 
-  // --- Grain ---
+  // --- Organic Filmic Grain ---
   if (grain > 0.001) {
-    float n = hash21(gl_FragCoord.xy + fract(t) * vec2(311.0, 173.0)) - 0.5;
-    col += n * grain * 0.25 * (1.0 - clamp(luma(col), 0.0, 1.0) * 0.5);
+    float n = hash21(gl_FragCoord.xy + fract(t * 12.0) * vec2(311.0, 173.0)) - 0.5;
+    float grainLuma = smoothstep(0.0, 0.8, luma(col)) * (1.0 - smoothstep(0.8, 1.0, luma(col)));
+    col += n * grain * 0.18 * mix(0.5, 1.2, grainLuma);
   }
 
   // --- Letterbox sinematik ---

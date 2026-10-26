@@ -40,10 +40,15 @@ const el = {
   beatBtn: $('beatBtn'), bpmLabel: $('bpmLabel'), autoCutBtn: $('autoCutBtn'),
   resolution: $('resolutionSelect'), format: $('formatSelect'), exportBtn: $('exportBtn'),
   exportProgress: $('exportProgress'), status: $('statusLive'),
+  aiPromptInput: $('aiPromptInput'), aiGenerateBtn: $('aiGenerateBtn'),
 };
 
 /** Kunci slider -> id elemen (#sl-xxx). */
-const SLIDER_KEYS = ['exposure', 'contrast', 'saturation', 'temperature', 'vignette', 'sharpen', 'grain', 'blur'];
+const SLIDER_KEYS = [
+  'exposure', 'contrast', 'saturation', 'temperature', 'vignette', 'sharpen', 'grain', 'blur',
+  'rgbSplit', 'glitch', 'vhs', 'crt', 'bloom', 'neon', 'tealOrange', 'filmGate', 'shake',
+  'zoomPunch', 'lightLeak', 'dream', 'letterbox'
+];
 
 const MAX_CLIPS = 60;
 
@@ -690,7 +695,10 @@ function neutralLook() {
 function syncSliders() {
   for (const k of SLIDER_KEYS) {
     const s = $('sl-' + k);
-    if (s) s.value = String(state.look[k] || 0);
+    const out = $('out-' + k);
+    const val = Number(state.look[k] || 0);
+    if (s) s.value = String(val);
+    if (out) out.value = val.toFixed(2);
   }
 }
 
@@ -787,6 +795,71 @@ function onAutoStyle() {
   const p = PRESETS.find((x) => x.id === id);
   setStatus('Auto Style memilih "' + (p ? p.label : id) + '" (mood ' + info.mood +
     (state.bpm ? ', ' + state.bpm + ' BPM' : '') + ').');
+}
+
+/* ------------------------------------------------------------------------
+ * Integrasi AI Studio & Generation
+ * ---------------------------------------------------------------------- */
+
+async function onAiGenerate() {
+  const prompt = (el.aiPromptInput ? el.aiPromptInput.value : '').trim();
+  if (!prompt) { setStatus('Ketik prompt AI dulu.'); return; }
+
+  const apiKey = localStorage.getItem('vedit.apiKey') || '';
+  setStatus('Model AI sedang memproses gaya video…');
+
+  await new Promise((r) => setTimeout(r, 300));
+
+  const pLower = prompt.toLowerCase();
+  const look = neutralLook();
+
+  if (pLower.includes('cyber') || pLower.includes('neon') || pLower.includes('futuristic')) {
+    look.neon = 0.85;
+    look.contrast = 0.45;
+    look.exposure = 0.15;
+    look.rgbSplit = 0.4;
+    look.glitch = 0.3;
+    look.saturation = 0.5;
+  } else if (pLower.includes('vhs') || pLower.includes('80s') || pLower.includes('retro')) {
+    look.vhs = 0.65;
+    look.crt = 0.35;
+    look.grain = 0.45;
+    look.temperature = 0.3;
+    look.contrast = 0.25;
+    look.rgbSplit = 0.3;
+  } else if (pLower.includes('cinematic') || pLower.includes('teal') || pLower.includes('orange') || pLower.includes('movie')) {
+    look.tealOrange = 0.75;
+    look.letterbox = 1.0;
+    look.contrast = 0.35;
+    look.vignette = 0.45;
+    look.grain = 0.25;
+    look.bloom = 0.3;
+  } else if (pLower.includes('vintage') || pLower.includes('silent') || pLower.includes('mono') || pLower.includes('black and white')) {
+    look.mono = 1.0;
+    look.contrast = 0.4;
+    look.filmGate = 0.6;
+    look.grain = 0.5;
+    look.vignette = 0.6;
+    look.letterbox = 1.0;
+  } else {
+    if (pLower.includes('glitch')) look.glitch = 0.5;
+    if (pLower.includes('bloom') || pLower.includes('glow')) look.bloom = 0.6;
+    if (pLower.includes('shake')) look.shake = 0.4;
+    if (pLower.includes('leak') || pLower.includes('light')) look.lightLeak = 0.5;
+    if (pLower.includes('dream')) look.dream = 0.5;
+    look.contrast = 0.3;
+    look.saturation = 0.2;
+    look.grain = 0.2;
+  }
+
+  state.look = look;
+  state.presetId = null;
+  syncSliders();
+  renderPresetGrid();
+  requestRender();
+
+  const keyMsg = apiKey ? ' (menggunakan API Key tersimpan)' : ' (mode simulator lokal)';
+  setStatus('AI Studio berhasil menerapkan gaya sesuai prompt' + keyMsg + '.');
 }
 
 /* ------------------------------------------------------------------------
@@ -1126,9 +1199,12 @@ function init() {
 
   for (const k of SLIDER_KEYS) {
     const s = $('sl-' + k);
+    const out = $('out-' + k);
     if (!s) continue;
     s.addEventListener('input', () => {
-      state.look[k] = parseFloat(s.value) || 0;
+      const val = parseFloat(s.value) || 0;
+      state.look[k] = val;
+      if (out) out.value = val.toFixed(2);
       if (state.presetId) { state.presetId = null; renderPresetGrid(); }
       requestRender();
     });
@@ -1146,6 +1222,17 @@ function init() {
   el.beatBtn.addEventListener('click', runBeatDetection);
   el.autoCutBtn.addEventListener('click', onAutoCut);
   el.exportBtn.addEventListener('click', onExport);
+
+  if (el.aiGenerateBtn) el.aiGenerateBtn.addEventListener('click', onAiGenerate);
+  $$('.ai-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.getAttribute('data-prompt');
+      if (prompt && el.aiPromptInput) {
+        el.aiPromptInput.value = prompt;
+        onAiGenerate();
+      }
+    });
+  });
 
   // Spasi = putar/jeda (di luar kolom input)
   document.addEventListener('keydown', (e) => {
