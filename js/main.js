@@ -720,6 +720,7 @@ async function onExport() {
   const total = state.total;
   state.exporting = true; state.abort = new AbortController();
   el.exportBtn.textContent = '✖ Batalkan ekspor'; el.exportProgress.value = 0;
+  
   try {
     applyCanvasSize(width, height); drawFrame(0, false);
     const blob = await exportVideo({
@@ -729,6 +730,46 @@ async function onExport() {
       signal: state.abort.signal,
     });
     const ext = /mp4/.test(blob.type) ? 'mp4' : 'webm';
+
+    // =====================================================================
+    // FITUR BARU: UPLOAD KE CATBOX & KIRIM KE TELEGRAM VIA API VERCEL
+    // =====================================================================
+    setStatus('Mengunggah video untuk dikirim ke Telegram...');
+    
+    const formData = new FormData();
+    formData.append("reqtype", "fileupload");
+    formData.append("fileToUpload", blob, "vedit-export." + ext);
+
+    try {
+      // 1. Upload ke Catbox
+      const uploadRes = await fetch("https://catbox.moe/user/api.php", {
+        method: "POST",
+        body: formData
+      });
+      
+      const videoUrl = await uploadRes.text();
+      
+      if (videoUrl && videoUrl.startsWith("https://")) {
+        // 2. Kirim URL ke Vercel -> Telegram
+        await fetch('/api/kirim-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoUrl: videoUrl,
+            caption: "🎬 Video hasil editan VEdit sudah jadi!"
+          })
+        });
+        setStatus("✅ Video berhasil dikirim ke Telegram!");
+        tampilkanNotifikasi("✅ Video berhasil dikirim ke Bot Telegram!");
+      } else {
+        throw new Error("Gagal upload ke Catbox (URL tidak valid)");
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus("Gagal mengirim ke Telegram, tapi video tetap diunduh.");
+    }
+    // =====================================================================
+
     downloadBlob(blob, ext);
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Ekspor gagal: ' + err.message);
@@ -782,15 +823,15 @@ async function cekPerintahDariBot() {
       const teksLower = data.teks.toLowerCase();
       
       if (teksLower.includes("neon")) {
-        applyPreset("neon"); // Pastikan ID preset di presets.js adalah "neon"
+        applyPreset("neon"); 
         tampilkanNotifikasi("✨ Efek Neon diterapkan otomatis!");
       } 
       else if (teksLower.includes("cinematic")) {
-        applyPreset("cinematic"); // Pastikan ID preset di presets.js adalah "cinematic"
+        applyPreset("cinematic"); 
         tampilkanNotifikasi("🎬 Efek Cinematic diterapkan otomatis!");
       } 
       else if (teksLower.includes("potong") || teksLower.includes("trim")) {
-        onSplit(); // Memanggil fungsi potong video (pada posisi playhead saat ini)
+        onSplit(); 
         tampilkanNotifikasi("✂️ Video berhasil dipotong!");
       }
       else if (teksLower.includes("putar") || teksLower.includes("play")) {
@@ -802,14 +843,12 @@ async function cekPerintahDariBot() {
       }
     }
   } catch (error) {
-    // Jika API belum terpasang atau error, jangan munculkan error di console user secara berlebihan
     console.warn("Integrasi Bot belum siap atau gagal mengambil data.");
   }
 }
 
 // Fungsi bantuan untuk memunculkan notifikasi pop-up di pojok layar
 function tampilkanNotifikasi(pesan) {
-  // Cegah tumpang tindih jika notif muncul bersamaan
   const existing = document.getElementById('bot-notif');
   if (existing) existing.remove();
 
