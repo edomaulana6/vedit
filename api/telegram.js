@@ -2,72 +2,95 @@ export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).send('Method Not Allowed');
 
   const { message } = request.body;
-  if (!message) return response.status(200).send('OK');
+  if (!message || !message.text) return response.status(200).send('OK');
 
   const chatId = message.chat.id;
-  const groqApiKey = process.env.GROQ_API_KEY;
-  const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const userText = message.text;
   
-  // Deteksi jenis pesan
-  const userText = message.text || message.caption || "";
-  const isPhoto = message.photo || message.document?.mime_type?.startsWith('image/');
-  const isAudio = message.audio || message.voice;
-  const isVideo = message.video || message.document?.mime_type?.startsWith('video/');
+  const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-  // Beri tahu AI apa yang dikirim user
-  let mediaInfo = "";
-  if (isPhoto) mediaInfo = "[User mengirim sebuah GAMBAR/FOTO]";
-  if (isAudio) mediaInfo = "[User mengirim sebuah FILE AUDIO/MUSIK]";
-  if (isVideo) mediaInfo = "[User mengirim sebuah VIDEO]";
-
-  let botReply = "";
-
-  try {
-    if (userText || mediaInfo) {
-      // Gabungkan teks user dengan info media
-      const promptToAI = `${userText} ${mediaInfo}`.trim();
-
-      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${groqApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b', 
-          messages: [
-            { 
-              role: 'system', 
-              content: 'Kamu adalah asisten AI VEdit. Kamu SANGAT JUJUR. Kamu BELUM BISA mengedit video secara otomatis. Jika user mengirim gambar/audio/video, pahami bahwa kamu menerimanya, tapi jelaskan dengan sopan bahwa mesin render video belum terpasang. Jangan pernah berjanji akan merender atau mengirim video dalam waktu tertentu (jangan berhalusinasi). Jawablah dengan santai dan cerdas.' 
-            },
-            { role: 'user', content: promptToAI }
-          ],
-          temperature: 0.5, // Dibuat lebih rendah agar tidak banyak ngarang
-        })
-      });
-
-      const groqData = await groqResponse.json();
-      botReply = groqData.choices[0]?.message?.content || 'Aku mendengar instruksimu.';
-
-    } else {
-      botReply = "Aku menerima pesanmu, tapi sepertinya bukan teks atau media yang bisa aku baca.";
-    }
-
-    // Kirim balik ke Telegram
-    await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+  const sendTelegramMessage = async (text) => {
+    const res = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: botReply,
-        reply_to_message_id: message.message_id
-      })
+      body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML' })
     });
+    const data = await res.json();
+    return data.result.message_id;
+  };
+
+  const editTelegramMessage = async (messageId, text) => {
+    await fetch(`https://api.telegram.org/bot${telegramToken}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML' })
+    });
+  };
+
+  if (userText === '/start') {
+    await sendTelegramMessage("Sistem siap. Silakan kirim instruksi edit videomu.");
+    return response.status(200).send('OK');
+  }
+
+  try {
+    // 1. Kirim pesan loading awal (0%)
+    const loadingText = "⏳ Memproses instruksi...\n\n[□□□□□□□□□□] 0%";
+    const messageId = await sendTelegramMessage(loadingText);
+
+    // 2. Animasi Loading (10% - 100%)
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    // Perhatikan: sekarang ada 10 kotak penuh di akhir
+    const bars = [
+      "[■□□□□□□□□□] 10%", 
+      "[■■□□□□□□□□] 20%", 
+      "[■■■□□□□□□□] 30%",
+      "[■■■■□□□□□□] 40%", 
+      "[■■■■■□□□□□] 50%", 
+      "[■■■■■■□□□□] 60%",
+      "[■■■■■■■□□□] 70%", 
+      "[■■■■■■■■□□] 80%", 
+      "[■■■■■■■■■□] 90%",
+      "[■■■■■■■■■■] 100%" // Ini tambahannya
+    ];
+
+    for (let i = 0; i < bars.length; i++) {
+      await sleep(500); // Jeda 0.5 detik per bar
+      await editTelegramMessage(messageId, `⏳ Memproses instruksi...\n\n${bars[i]}`);
+    }
+
+    // 3. Proses Database (Hapus data lama & Simpan baru)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await fetch(`${supabaseUrl}/rest/v1/perintah_edit?created_at=lt.${oneHourAgo}`, {
+      method: 'DELETE',
+      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+    });
+
+    const dbResponse = await fetch(`${supabaseUrl}/rest/v1/perintah_edit`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ perintah: userText })
+    });
+
+    if (!dbResponse.ok) throw new Error('Gagal menyimpan ke database');
+
+    await sleep(800); // Jeda sebentar agar user sempat melihat 100%
+
+    // 4. Pesan Final
+    await editTelegramMessage(messageId, `✅ <b>Berhasil diproses!</b>\n\n[■■■■■■■■■■] 100%\n\nPerintah: "${userText}"\n\nSilakan buka <a href="https://vedit-nine.vercel.app">website VEdit</a> untuk melihat hasilnya!`);
 
     return response.status(200).send('OK');
 
   } catch (error) {
     console.error('Error:', error);
+    await sendTelegramMessage("❌ Maaf, terjadi kesalahan sistem saat memproses perintah.");
     return response.status(500).send('Error');
   }
 }
