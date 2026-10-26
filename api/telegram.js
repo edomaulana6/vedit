@@ -8,14 +8,14 @@ export default async function handler(request, response) {
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  const groqApiKey = process.env.GROQ_API_KEY; // Pastikan ini masih ada di Vercel
 
   // --- 1. DETEKSI JENIS FILE / PESAN ---
   let fileId = null;
   let fileType = 'text';
-  let userText = message.text || message.caption || ""; // Ambil teks atau caption
+  let userText = message.text || message.caption || "";
 
   if (message.photo) {
-    // Foto punya beberapa resolusi, ambil yang paling besar (index terakhir)
     fileId = message.photo[message.photo.length - 1].file_id;
     fileType = 'photo';
   } else if (message.video) {
@@ -32,78 +32,81 @@ export default async function handler(request, response) {
     fileType = 'document';
   }
 
-  // Jika tidak ada teks dan tidak ada file, abaikan
   if (!userText && !fileId) return response.status(200).send('OK');
 
-  const sendTelegramMessage = async (text) => {
+  const sendMsg = async (text) => {
     const res = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML' })
     });
-    const data = await res.json();
-    return data.result.message_id;
-  };
-
-  const editTelegramMessage = async (messageId, text) => {
-    await fetch(`https://api.telegram.org/bot${telegramToken}/editMessageText`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML' })
-    });
+    return (await res.json()).result.message_id;
   };
 
   if (userText === '/start') {
-    await sendTelegramMessage("Sistem siap. Kirim teks instruksi, atau kirim file (foto/video/audio) beserta caption instruksinya.");
+    await sendMsg("Halo! Aku asisten VEdit. Kamu bisa ngobrol santai denganku, atau kirim file (video/audio/foto) satu per satu untuk diedit. Kalau semua file sudah dikirim, ketik <b>'Ekspor'</b>.");
     return response.status(200).send('OK');
   }
 
   try {
-    // 2. Tampilkan animasi loading
-    const messageId = await sendTelegramMessage("⏳ Memproses...\n\n[□□□□□□□□□□] 0%");
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    // ==========================================
+    // JIKA USER MENGIRIM FILE (VIDEO/AUDIO/FOTO)
+    // ==========================================
+    if (fileId) {
+      // Simpan ke database
+      await fetch(`${supabaseUrl}/rest/v1/perintah_edit`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ perintah: userText || "File", file_id: fileId, file_type: fileType })
+      });
 
-    const bars = ["[■■■□□□□□□□] 30%", "[■■■■■■□□□□] 60%", "[■■■■■■■■■■] 100%"];
-    for (let i = 0; i < bars.length; i++) {
-      await sleep(400); 
-      await editTelegramMessage(messageId, `⏳ Memproses...\n\n${bars[i]}`);
+      await sendMsg(`✅ <b>${fileType.toUpperCase()} diterima!</b>\n\nSilakan kirim file lain (jika ada), atau ketik <b>'Ekspor'</b> jika semua file sudah lengkap.`);
+      return response.status(200).send('OK');
     }
 
-    // 3. Simpan ke Database Supabase
-    // Pastikan tabel 'perintah_edit' punya kolom: perintah (text), file_id (text), file_type (text)
-    const dbResponse = await fetch(`${supabaseUrl}/rest/v1/perintah_edit`, {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ 
-        perintah: userText, 
-        file_id: fileId,
-        file_type: fileType
-      })
-    });
+    // ==========================================
+    // JIKA USER MENGIRIM TEKS BIASA (NGOBROL)
+    // ==========================================
+    if (userText) {
+      // Jika user mengetik "Ekspor", beri tahu untuk buka website
+      if (userText.toLowerCase().includes('ekspor')) {
+        await sendMsg("🎬 Siap! Silakan buka <a href='https://vedit-nine.vercel.app'>website VEdit</a> untuk merender videonya. Setelah dirender di website, hasilnya akan otomatis terkirim ke sini!");
+        return response.status(200).send('OK');
+      }
 
-    if (!dbResponse.ok) {
-      const errorData = await dbResponse.text();
-      throw new Error(`DB Error: ${errorData}`);
+      // Jika bukan "Ekspor", anggap user sedang ngobrol. Panggil Groq AI.
+      if (groqApiKey) {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'openai/gpt-oss-120b',
+            messages: [
+              { role: 'system', content: 'Kamu adalah asisten editor video VEdit. Jawab dengan santai, ramah, dan jangan kaku. Jika user bertanya soal editing, beri saran.' },
+              { role: 'user', content: userText }
+            ],
+            temperature: 0.7
+          })
+        });
+        
+        const groqData = await groqRes.json();
+        const aiReply = groqData.choices[0]?.message?.content || "Maaf, aku tidak mengerti.";
+        await sendMsg(aiReply);
+      } else {
+        await sendMsg("Aku belum dihubungkan ke AI. Tapi kalau kamu mau ekspor video, ketik 'Ekspor' ya!");
+      }
+      
+      return response.status(200).send('OK');
     }
-
-    // 4. Pesan Sukses
-    let successMsg = `✅ <b>Berhasil!</b>\n\n[■■■■■■■■■■] 100%\n\n`;
-    successMsg += `<b>Tipe:</b> ${fileType.toUpperCase()}\n`;
-    if (userText) successMsg += `<b>Instruksi:</b> "${userText}"\n`;
-    if (fileId) successMsg += `<b>File ID:</b> <code>${fileId}</code>\n`;
-    successMsg += `\nSilakan cek website VEdit!`;
-
-    await editTelegramMessage(messageId, successMsg);
-    return response.status(200).send('OK');
 
   } catch (error) {
     console.error('Error:', error.message);
-    await sendTelegramMessage(`❌ <b>Gagal:</b>\n<code>${error.message}</code>`);
+    await sendMsg(`❌ <b>Gagal:</b>\n<code>${error.message}</code>`);
     return response.status(200).send('OK'); 
   }
 }
