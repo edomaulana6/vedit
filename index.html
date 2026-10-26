@@ -170,9 +170,11 @@
             <div class="tabs" role="tablist" aria-label="Menu editor">
               <button type="button" class="tab active" role="tab" id="tab-media" aria-selected="true" aria-controls="panel-media">Media</button>
               <button type="button" class="tab" role="tab" id="tab-gaya" aria-selected="false" aria-controls="panel-gaya" tabindex="-1">Gaya</button>
+              <button type="button" class="tab" role="tab" id="tab-efek" aria-selected="false" aria-controls="panel-efek" tabindex="-1">Efek</button>
               <button type="button" class="tab" role="tab" id="tab-warna" aria-selected="false" aria-controls="panel-warna" tabindex="-1">Warna</button>
               <button type="button" class="tab" role="tab" id="tab-teks" aria-selected="false" aria-controls="panel-teks" tabindex="-1">Teks</button>
               <button type="button" class="tab" role="tab" id="tab-audio" aria-selected="false" aria-controls="panel-audio" tabindex="-1">Audio</button>
+              <button type="button" class="tab" role="tab" id="tab-ai" aria-selected="false" aria-controls="panel-ai" tabindex="-1">AI Studio</button>
               <button type="button" class="tab" role="tab" id="tab-ekspor" aria-selected="false" aria-controls="panel-ekspor" tabindex="-1">Ekspor</button>
             </div>
 
@@ -230,15 +232,95 @@
               </div>
             </div>
 
+            <div class="tab-panel" role="tabpanel" id="panel-efek" aria-labelledby="tab-efek" hidden>
+              <h3 class="sub-title">Kontrol Efek Manual (WebGL)</h3>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-rgbSplit">Chromatic Aberration (RGB Split)</label><output id="out-rgbSplit">0.00</output></div>
+                <input type="range" id="sl-rgbSplit" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-glitch">Glitch</label><output id="out-glitch">0.00</output></div>
+                <input type="range" id="sl-glitch" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-vhs">VHS Distortion</label><output id="out-vhs">0.00</output></div>
+                <input type="range" id="sl-vhs" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-crt">CRT TV Effect</label><output id="out-crt">0.00</output></div>
+                <input type="range" id="sl-crt" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-bloom">Bloom / Glow</label><output id="out-bloom">0.00</output></div>
+                <input type="range" id="sl-bloom" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-neon">Neon Glow</label><output id="out-neon">0.00</output></div>
+                <input type="range" id="sl-neon" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-tealOrange">Teal & Orange Grade</label><output id="out-tealOrange">0.00</output></div>
+                <input type="range" id="sl-tealOrange" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-filmGate">Film Gate Weave</label><output id="out-filmGate">0.00</output></div>
+                <input type="range" id="sl-filmGate" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-shake">Camera Shake</label><output id="out-shake">0.00</output></div>
+                <input type="range" id="sl-shake" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-zoomPunch">Zoom Punch (Beat)</label><output id="out-zoomPunch">0.00</output></div>
+                <input type="range" id="sl-zoomPunch" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-lightLeak">Light Leak</label><output id="out-lightLeak">0.00</output></div>
+                <input type="range" id="sl-lightLeak" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-dream">Dreamy Glow</label><output id="out-dream">0.00</output></div>
+                <input type="range" id="sl-dream" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-letterbox">Letterbox (Cinematic Bar)</label><output id="out-letterbox">0.00</output></div>
+                <input type="range" id="sl-letterbox" min="0" max="1" step="0.01" value="0">
+              </div>
+            </div>
+
             <div class="tab-panel" role="tabpanel" id="panel-warna" aria-labelledby="tab-warna" hidden>
-              <div class="field slider-field"><label for="sl-exposure">Exposure</label><input type="range" id="sl-exposure" min="-1" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-contrast">Kontras</label><input type="range" id="sl-contrast" min="0" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-saturation">Saturasi</label><input type="range" id="sl-saturation" min="0" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-temperature">Suhu warna</label><input type="range" id="sl-temperature" min="-1" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-vignette">Vignette</label><input type="range" id="sl-vignette" min="0" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-sharpen">Ketajaman</label><input type="range" id="sl-sharpen" min="0" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-grain">Grain</label><input type="range" id="sl-grain" min="0" max="1" step="0.01" value="0"></div>
-              <div class="field slider-field"><label for="sl-blur">Blur</label><input type="range" id="sl-blur" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-exposure">Exposure</label><output id="out-exposure">0.00</output></div>
+                <input type="range" id="sl-exposure" min="-1" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-contrast">Kontras</label><output id="out-contrast">0.00</output></div>
+                <input type="range" id="sl-contrast" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-saturation">Saturasi</label><output id="out-saturation">0.00</output></div>
+                <input type="range" id="sl-saturation" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-temperature">Suhu warna</label><output id="out-temperature">0.00</output></div>
+                <input type="range" id="sl-temperature" min="-1" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-vignette">Vignette</label><output id="out-vignette">0.00</output></div>
+                <input type="range" id="sl-vignette" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-sharpen">Ketajaman</label><output id="out-sharpen">0.00</output></div>
+                <input type="range" id="sl-sharpen" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-grain">Grain</label><output id="out-grain">0.00</output></div>
+                <input type="range" id="sl-grain" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="field slider-field">
+                <div class="slider-header"><label for="sl-blur">Blur</label><output id="out-blur">0.00</output></div>
+                <input type="range" id="sl-blur" min="0" max="1" step="0.01" value="0">
+              </div>
             </div>
 
             <div class="tab-panel" role="tabpanel" id="panel-teks" aria-labelledby="tab-teks" hidden>
@@ -287,6 +369,24 @@
                 <textarea id="subtitleInput" rows="5" placeholder="0-2|Halo semua&#10;2-4.5|Selamat datang"></textarea>
                 <small class="hint">Satu baris per subtitle. Waktu dalam detik.</small>
               </div>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai" hidden>
+              <div class="field">
+                <label for="aiPromptInput">Prompt Editor Video AI (NodeFlow / Custom API)</label>
+                <textarea id="aiPromptInput" rows="3" placeholder="Contoh: Buat gaya cyberpunk neon dengan efek glitch, kontras tinggi dan musik beat cepat"></textarea>
+              </div>
+              <div class="btn-row">
+                <button type="button" id="aiGenerateBtn" class="btn btn-primary">🤖 Generasi Gaya AI</button>
+              </div>
+              <h3 class="sub-title">Prompt Populer</h3>
+              <div class="chips" id="aiChipGrid">
+                <button type="button" class="chip ai-chip" data-prompt="Cyberpunk Neon Glitch dengan kontras tinggi dan chromatic aberration">Cyberpunk Neon</button>
+                <button type="button" class="chip ai-chip" data-prompt="Retro 80s VHS tape dengan scanlines, noise, dan tone hangat">80s VHS Retro</button>
+                <button type="button" class="chip ai-chip" data-prompt="Moody Cinematic Teal & Orange dengan letterbox dan film grain">Cinematic Teal & Orange</button>
+                <button type="button" class="chip ai-chip" data-prompt="Vintage Black and White silent film look dengan vignette dan film gate">Vintage Silent Movie</button>
+              </div>
+              <p class="hint">Model AI akan memproses prompt menggunakan API Key Anda di header untuk mengkonfigurasi kombinasi efek shader, grading warna, dan pengaturan ritme video.</p>
             </div>
 
             <div class="tab-panel" role="tabpanel" id="panel-audio" aria-labelledby="tab-audio" hidden>
