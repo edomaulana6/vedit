@@ -4,236 +4,390 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="description" content="VEdit: editor video di browser dengan efek jedag-jedug, cinematic, dan puluhan gaya lain. Semua proses berjalan di perangkat Anda.">
-  <title>VEdit — Editor Video di Browser</title>
+  <meta name="description" content="VEdit API: platform video API gratis dengan editor browser, efek cinematic, beat, neon, retro, dan export video cepat.">
+  <title>VEdit API — Video API Gratis & Editor Browser</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;700&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;700&family=Raleway:wght@400;700&family=Roboto+Condensed:wght@400;700&family=Space+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;700&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;500;700;800&family=Raleway:wght@400;700;800&family=Roboto+Condensed:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Lewati ke editor</a>
-
-  <div class="app">
-    <header class="topbar" role="banner">
+  <div class="page-shell">
+    <header class="site-header" role="banner">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">▶</span>
-        <h1>VEdit</h1>
-        <span class="brand-sub">Editor video di browser</span>
+        <div class="brand-copy">
+          <h1>VEdit</h1>
+          <span class="brand-sub">Free Video API</span>
+        </div>
       </div>
-      <div class="topbar-actions">
-        <label class="field field-inline" for="ratioSelect">
-          <span>Rasio</span>
-          <select id="ratioSelect">
-            <option value="9:16" selected>9:16 (TikTok)</option>
-            <option value="1:1">1:1 (Persegi)</option>
-            <option value="16:9">16:9 (Lanskap)</option>
-          </select>
-        </label>
-      </div>
+
+      <nav class="site-nav" aria-label="Navigasi utama">
+        <a href="#fitur">Fitur</a>
+        <a href="#efek">Efek</a>
+        <a href="#demo">Demo</a>
+        <a href="#docs">Dokumen</a>
+      </nav>
+
+      <a class="nav-cta" href="#demo">Coba Gratis</a>
     </header>
 
-    <main id="main" class="workspace">
-      <section class="panel stage" aria-labelledby="stage-title">
-        <h2 id="stage-title" class="panel-title">Pratinjau</h2>
-        <div class="canvas-wrap">
-          <canvas id="previewCanvas" width="540" height="960" role="img" aria-label="Pratinjau video"></canvas>
+    <main class="page-main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow">Video API untuk creator modern</span>
+          <h2 id="hero-title">Buat konten video viral dengan efek siap pakai, cepat, dan gratis.</h2>
+          <p>
+            VEdit hadir sebagai platform editor browser yang siap dipakai untuk Reels, TikTok,
+            promo produk, dan konten storytelling. Dilengkapi preset cinematic, neon, retro,
+            glitch, dream, hingga format export video MP4/WebM langsung dari browser Anda.
+          </p>
+
+          <div class="hero-actions">
+            <a class="primary-btn" href="#demo">Mulai Edit</a>
+            <a class="secondary-btn" href="#efek">Lihat Efek</a>
+          </div>
+
+          <ul class="hero-stats" aria-label="Statistik platform">
+            <li><strong>10K+</strong><span>Render</span></li>
+            <li><strong>24</strong><span>Preset</span></li>
+            <li><strong>4.9/5</strong><span>Rating</span></li>
+          </ul>
         </div>
-        <div class="transport">
-          <button type="button" id="playBtn" class="btn btn-primary" aria-label="Putar atau jeda">▶ Putar</button>
-          <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Posisi pemutaran">
-          <output id="timeLabel" class="time-label">0:00 / 0:00</output>
+
+        <div class="hero-visual" aria-label="Preview efek video">
+          <div class="visual-card main-card">
+            <div class="visual-badge">Live Preset</div>
+            <div class="visual-preview preview-cinematic">
+              <div class="preview-orb orb-one"></div>
+              <div class="preview-orb orb-two"></div>
+              <div class="preview-line"></div>
+            </div>
+            <div class="visual-meta">
+              <span>Cinematic Glow</span>
+              <strong>HD 1080p</strong>
+            </div>
+          </div>
+
+          <div class="mini-panels">
+            <div class="mini-panel">
+              <span>Beat Sync</span>
+              <strong>128 BPM</strong>
+            </div>
+            <div class="mini-panel accent">
+              <span>Kontras</span>
+              <strong>+42%</strong>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="panel controls" aria-labelledby="ctrl-title">
-        <h2 id="ctrl-title" class="panel-title">Perangkat</h2>
+      <section class="feature-strip" id="fitur" aria-label="Fitur utama">
+        <article class="mini-feature">
+          <span class="feature-icon">⚡</span>
+          <div>
+            <h3>Auto Style</h3>
+            <p>Preset cepat berdasarkan mood, BPM, dan warna video.</p>
+          </div>
+        </article>
 
-        <div class="tabs" role="tablist" aria-label="Menu editor">
-          <button type="button" class="tab active" role="tab" id="tab-media" aria-selected="true" aria-controls="panel-media">Media</button>
-          <button type="button" class="tab" role="tab" id="tab-gaya" aria-selected="false" aria-controls="panel-gaya" tabindex="-1">Gaya</button>
-          <button type="button" class="tab" role="tab" id="tab-warna" aria-selected="false" aria-controls="panel-warna" tabindex="-1">Warna</button>
-          <button type="button" class="tab" role="tab" id="tab-teks" aria-selected="false" aria-controls="panel-teks" tabindex="-1">Teks</button>
-          <button type="button" class="tab" role="tab" id="tab-audio" aria-selected="false" aria-controls="panel-audio" tabindex="-1">Audio</button>
-          <button type="button" class="tab" role="tab" id="tab-ekspor" aria-selected="false" aria-controls="panel-ekspor" tabindex="-1">Ekspor</button>
+        <article class="mini-feature">
+          <span class="feature-icon">🎬</span>
+          <div>
+            <h3>Efek Cinematic</h3>
+            <p>Letterbox, bloom, halation, grain, dan glow profesional.</p>
+          </div>
+        </article>
+
+        <article class="mini-feature">
+          <span class="feature-icon">🎵</span>
+          <div>
+            <h3>Beat Detection</h3>
+            <p>Deteksi tempo otomatis dan potong klip sesuai ritme musik.</p>
+          </div>
+        </article>
+
+        <article class="mini-feature">
+          <span class="feature-icon">📦</span>
+          <div>
+            <h3>Export Mudah</h3>
+            <p>Ekspor MP4/WebM dalam resolusi 480p hingga 1080p.</p>
+          </div>
+        </article>
+      </section>
+
+      <section class="effects-showcase" id="efek" aria-labelledby="effects-title">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Efek populer</span>
+            <h2 id="effects-title">Style yang siap bikin video lebih hidup</h2>
+          </div>
+          <a href="#demo">Lihat editor</a>
         </div>
 
-        <!-- MEDIA -->
-        <div class="tab-panel" role="tabpanel" id="panel-media" aria-labelledby="tab-media">
-          <div class="field">
-            <label for="addMediaInput">Tambah video atau gambar</label>
-            <input type="file" id="addMediaInput" accept="video/*,image/*" multiple>
-          </div>
-          <div class="btn-row">
-            <button type="button" id="splitBtn" class="btn">✂ Potong di posisi</button>
-            <button type="button" id="deleteBtn" class="btn">🗑 Hapus klip</button>
-          </div>
-          <div class="field-grid">
-            <div class="field">
-              <label for="durationInput">Durasi klip (detik)</label>
-              <input type="number" id="durationInput" min="0.2" max="600" step="0.1" value="3">
-            </div>
-            <div class="field">
-              <label for="speedInput">Kecepatan (×)</label>
-              <input type="number" id="speedInput" min="0.25" max="4" step="0.05" value="1">
-            </div>
-          </div>
-          <h3 class="sub-title">Daftar klip</h3>
-          <ul id="clipList" class="clip-list" aria-label="Daftar klip"></ul>
-        </div>
+        <div class="effect-grid">
+          <article class="effect-card card-glitch">
+            <span class="tag">Glitch</span>
+            <h3>Neon Pulse</h3>
+            <p>RGB split, flash beat, dan efek nyala cepat untuk konten energik.</p>
+          </article>
 
-        <!-- GAYA -->
-        <div class="tab-panel" role="tabpanel" id="panel-gaya" aria-labelledby="tab-gaya" hidden>
-          <div class="field">
-            <label for="presetCategory">Kategori gaya</label>
-            <select id="presetCategory"></select>
-          </div>
-          <div class="btn-row">
-            <button type="button" id="autoStyleBtn" class="btn btn-primary">✨ Auto Style</button>
-            <button type="button" id="savePresetBtn" class="btn">💾 Simpan preset saya</button>
-          </div>
-          <div id="presetGrid" class="preset-grid" role="list" aria-label="Pilihan preset"></div>
-          <h3 class="sub-title">Preset saya</h3>
-          <ul id="userPresetList" class="user-presets" aria-label="Preset buatan pengguna"></ul>
-          <div class="field">
-            <label for="transitionSelect">Transisi antar klip</label>
-            <select id="transitionSelect">
-              <option value="cut">Cut</option>
-              <option value="whip">Whip Pan</option>
-              <option value="glitch">Glitch</option>
-              <option value="zoom">Zoom Blur</option>
-              <option value="spin">Spin</option>
-              <option value="lightleak">Light Leak</option>
-              <option value="morphblur">Morph Blur</option>
-              <option value="wipeLeft">Wipe Kiri</option>
-              <option value="wipeRight">Wipe Kanan</option>
-              <option value="wipeUp">Wipe Atas</option>
-              <option value="fade">Fade</option>
-              <option value="dissolve">Dissolve</option>
-            </select>
-          </div>
-        </div>
+          <article class="effect-card card-cinematic">
+            <span class="tag">Cinematic</span>
+            <h3>Epic Trailer</h3>
+            <p>Letterbox, grain, dan warm contrast untuk visual premium.</p>
+          </article>
 
-        <!-- WARNA -->
-        <div class="tab-panel" role="tabpanel" id="panel-warna" aria-labelledby="tab-warna" hidden>
-          <div class="field slider-field"><label for="sl-exposure">Exposure</label><input type="range" id="sl-exposure" min="-1" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-contrast">Kontras</label><input type="range" id="sl-contrast" min="0" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-saturation">Saturasi</label><input type="range" id="sl-saturation" min="0" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-temperature">Suhu warna</label><input type="range" id="sl-temperature" min="-1" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-vignette">Vignette</label><input type="range" id="sl-vignette" min="0" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-sharpen">Ketajaman</label><input type="range" id="sl-sharpen" min="0" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-grain">Grain</label><input type="range" id="sl-grain" min="0" max="1" step="0.01" value="0"></div>
-          <div class="field slider-field"><label for="sl-blur">Blur</label><input type="range" id="sl-blur" min="0" max="1" step="0.01" value="0"></div>
-        </div>
+          <article class="effect-card card-retro">
+            <span class="tag">Retro</span>
+            <h3>VHS Lo-Fi</h3>
+            <p>Scanlines, vignette, serta mood nostalgia tanpa perlu alat tambahan.</p>
+          </article>
 
-        <!-- TEKS -->
-        <div class="tab-panel" role="tabpanel" id="panel-teks" aria-labelledby="tab-teks" hidden>
-          <div class="field">
-            <label for="textInput">Teks</label>
-            <input type="text" id="textInput" maxlength="120" placeholder="Ketik teks di sini">
-          </div>
-          <div class="field">
-            <label for="fontSelect">Font</label>
-            <select id="fontSelect">
-              <optgroup label="Font sistem">
-                <option value="Arial, Helvetica, sans-serif">Arial</option>
-                <option value="Verdana, Geneva, sans-serif">Verdana</option>
-                <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
-                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-                <option value="Impact, Charcoal, sans-serif">Impact</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'Times New Roman', Times, serif">Times New Roman</option>
-                <option value="'Courier New', Courier, monospace">Courier New</option>
-                <option value="'Comic Sans MS', cursive">Comic Sans</option>
-              </optgroup>
-              <optgroup label="Google Fonts">
-                <option value="'Inter', sans-serif">Inter</option>
-                <option value="'Poppins', sans-serif">Poppins</option>
-                <option value="'Montserrat', sans-serif" selected>Montserrat</option>
-                <option value="'Raleway', sans-serif">Raleway</option>
-                <option value="'Oswald', sans-serif">Oswald</option>
-                <option value="'Anton', sans-serif">Anton</option>
-                <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
-                <option value="'Roboto Condensed', sans-serif">Roboto Condensed</option>
-                <option value="'Playfair Display', serif">Playfair Display</option>
-                <option value="'Pacifico', cursive">Pacifico</option>
-                <option value="'Space Mono', monospace">Space Mono</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="field-grid">
-            <div class="field">
-              <label for="textSize">Ukuran</label>
-              <input type="number" id="textSize" min="12" max="300" step="2" value="64">
-            </div>
-            <div class="field">
-              <label for="textColor">Warna</label>
-              <input type="color" id="textColor" value="#ffffff">
-            </div>
-          </div>
-          <button type="button" id="addTextBtn" class="btn btn-primary">＋ Tambah teks</button>
-          <div class="field">
-            <label for="subtitleInput">Subtitle (format: mulai-akhir|teks)</label>
-            <textarea id="subtitleInput" rows="5" placeholder="0-2|Halo semua&#10;2-4.5|Selamat datang"></textarea>
-            <small class="hint">Satu baris per subtitle. Waktu dalam detik.</small>
-          </div>
-        </div>
+          <article class="effect-card card-soft">
+            <span class="tag">Soft</span>
+            <h3>Dream Glow</h3>
+            <p>Warna lembut, bloom, dan hazy light cocok untuk aesthetic brand.</p>
+          </article>
 
-        <!-- AUDIO -->
-        <div class="tab-panel" role="tabpanel" id="panel-audio" aria-labelledby="tab-audio" hidden>
-          <div class="field">
-            <label for="addAudioInput">Tambah musik</label>
-            <input type="file" id="addAudioInput" accept="audio/*">
-          </div>
-          <div class="btn-row">
-            <button type="button" id="beatBtn" class="btn">🥁 Deteksi beat</button>
-            <button type="button" id="autoCutBtn" class="btn btn-primary">⚡ Potong otomatis</button>
-          </div>
-          <p class="stat">Tempo: <strong id="bpmLabel">— BPM</strong></p>
-          <h3 class="sub-title">Lini masa</h3>
-          <div id="timeline" class="timeline" aria-label="Lini masa">
-            <div class="tl-track" data-track="video"></div>
-            <div class="tl-track" data-track="audio"></div>
-          </div>
-        </div>
+          <article class="effect-card card-neon">
+            <span class="tag">Stylized</span>
+            <h3>Cyberpunk</h3>
+            <p>Neon, contrast tajam, dan efek futuristic untuk reels dan promo.</p>
+          </article>
 
-        <!-- EKSPOR -->
-        <div class="tab-panel" role="tabpanel" id="panel-ekspor" aria-labelledby="tab-ekspor" hidden>
-          <div class="field">
-            <label for="resolutionSelect">Resolusi</label>
-            <select id="resolutionSelect">
-              <option value="480p">480p</option>
-              <option value="720p" selected>720p HD</option>
-              <option value="1080p">1080p Full HD</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="formatSelect">Format</label>
-            <select id="formatSelect">
-              <option value="mp4" selected>MP4</option>
-              <option value="webm">WebM</option>
-            </select>
-          </div>
-          <button type="button" id="exportBtn" class="btn btn-primary btn-block">⬇ Ekspor video</button>
-          <div class="field">
-            <label for="exportProgress">Progres ekspor</label>
-            <progress id="exportProgress" max="1" value="0">0%</progress>
-          </div>
-          <p class="hint">Ekspor berjalan real-time. Biarkan tab tetap terbuka sampai selesai.</p>
-        </div>
-
-        <div class="chips" aria-label="Gaya populer">
-          <span class="chip">Jedag-Jedug</span>
-          <span class="chip">Cinematic</span>
-          <span class="chip">Retro</span>
-          <span class="chip">Aesthetic</span>
-          <span class="chip">Neon</span>
+          <article class="effect-card card-mood">
+            <span class="tag">Mood</span>
+            <h3>Sunset Warm</h3>
+            <p>Set warna hangat, halation, dan soft vignette untuk storytelling.</p>
+          </article>
         </div>
       </section>
+
+      <div class="app demo-shell" id="demo">
+        <header class="topbar" role="banner">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">▶</span>
+            <h1>VEdit</h1>
+            <span class="brand-sub">Editor video di browser</span>
+          </div>
+          <div class="topbar-actions">
+            <label class="field field-inline" for="ratioSelect">
+              <span>Rasio</span>
+              <select id="ratioSelect">
+                <option value="9:16" selected>9:16 (TikTok)</option>
+                <option value="1:1">1:1 (Persegi)</option>
+                <option value="16:9">16:9 (Lanskap)</option>
+              </select>
+            </label>
+          </div>
+        </header>
+
+        <main id="main" class="workspace">
+          <section class="panel stage" aria-labelledby="stage-title">
+            <h2 id="stage-title" class="panel-title">Pratinjau</h2>
+            <div class="canvas-wrap">
+              <canvas id="previewCanvas" width="540" height="960" role="img" aria-label="Pratinjau video"></canvas>
+            </div>
+            <div class="transport">
+              <button type="button" id="playBtn" class="btn btn-primary" aria-label="Putar atau jeda">▶ Putar</button>
+              <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Posisi pemutaran">
+              <output id="timeLabel" class="time-label">0:00 / 0:00</output>
+            </div>
+          </section>
+
+          <section class="panel controls" aria-labelledby="ctrl-title">
+            <h2 id="ctrl-title" class="panel-title">Perangkat</h2>
+
+            <div class="tabs" role="tablist" aria-label="Menu editor">
+              <button type="button" class="tab active" role="tab" id="tab-media" aria-selected="true" aria-controls="panel-media">Media</button>
+              <button type="button" class="tab" role="tab" id="tab-gaya" aria-selected="false" aria-controls="panel-gaya" tabindex="-1">Gaya</button>
+              <button type="button" class="tab" role="tab" id="tab-warna" aria-selected="false" aria-controls="panel-warna" tabindex="-1">Warna</button>
+              <button type="button" class="tab" role="tab" id="tab-teks" aria-selected="false" aria-controls="panel-teks" tabindex="-1">Teks</button>
+              <button type="button" class="tab" role="tab" id="tab-audio" aria-selected="false" aria-controls="panel-audio" tabindex="-1">Audio</button>
+              <button type="button" class="tab" role="tab" id="tab-ekspor" aria-selected="false" aria-controls="panel-ekspor" tabindex="-1">Ekspor</button>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-media" aria-labelledby="tab-media">
+              <div class="field">
+                <label for="addMediaInput">Tambah video atau gambar</label>
+                <input type="file" id="addMediaInput" accept="video/*,image/*" multiple>
+              </div>
+              <div class="btn-row">
+                <button type="button" id="splitBtn" class="btn">✂ Potong di posisi</button>
+                <button type="button" id="deleteBtn" class="btn">🗑 Hapus klip</button>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="durationInput">Durasi klip (detik)</label>
+                  <input type="number" id="durationInput" min="0.2" max="600" step="0.1" value="3">
+                </div>
+                <div class="field">
+                  <label for="speedInput">Kecepatan (×)</label>
+                  <input type="number" id="speedInput" min="0.25" max="4" step="0.05" value="1">
+                </div>
+              </div>
+              <h3 class="sub-title">Daftar klip</h3>
+              <ul id="clipList" class="clip-list" aria-label="Daftar klip"></ul>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-gaya" aria-labelledby="tab-gaya" hidden>
+              <div class="field">
+                <label for="presetCategory">Kategori gaya</label>
+                <select id="presetCategory"></select>
+              </div>
+              <div class="btn-row">
+                <button type="button" id="autoStyleBtn" class="btn btn-primary">✨ Auto Style</button>
+                <button type="button" id="savePresetBtn" class="btn">💾 Simpan preset saya</button>
+              </div>
+              <div id="presetGrid" class="preset-grid" role="list" aria-label="Pilihan preset"></div>
+              <h3 class="sub-title">Preset saya</h3>
+              <ul id="userPresetList" class="user-presets" aria-label="Preset buatan pengguna"></ul>
+              <div class="field">
+                <label for="transitionSelect">Transisi antar klip</label>
+                <select id="transitionSelect">
+                  <option value="cut">Cut</option>
+                  <option value="whip">Whip Pan</option>
+                  <option value="glitch">Glitch</option>
+                  <option value="zoom">Zoom Blur</option>
+                  <option value="spin">Spin</option>
+                  <option value="lightleak">Light Leak</option>
+                  <option value="morphblur">Morph Blur</option>
+                  <option value="wipeLeft">Wipe Kiri</option>
+                  <option value="wipeRight">Wipe Kanan</option>
+                  <option value="wipeUp">Wipe Atas</option>
+                  <option value="fade">Fade</option>
+                  <option value="dissolve">Dissolve</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-warna" aria-labelledby="tab-warna" hidden>
+              <div class="field slider-field"><label for="sl-exposure">Exposure</label><input type="range" id="sl-exposure" min="-1" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-contrast">Kontras</label><input type="range" id="sl-contrast" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-saturation">Saturasi</label><input type="range" id="sl-saturation" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-temperature">Suhu warna</label><input type="range" id="sl-temperature" min="-1" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-vignette">Vignette</label><input type="range" id="sl-vignette" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-sharpen">Ketajaman</label><input type="range" id="sl-sharpen" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-grain">Grain</label><input type="range" id="sl-grain" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field slider-field"><label for="sl-blur">Blur</label><input type="range" id="sl-blur" min="0" max="1" step="0.01" value="0"></div>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-teks" aria-labelledby="tab-teks" hidden>
+              <div class="field">
+                <label for="textInput">Teks</label>
+                <input type="text" id="textInput" maxlength="120" placeholder="Ketik teks di sini">
+              </div>
+              <div class="field">
+                <label for="fontSelect">Font</label>
+                <select id="fontSelect">
+                  <optgroup label="Font sistem">
+                    <option value="Arial, Helvetica, sans-serif">Arial</option>
+                    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                    <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                    <option value="Impact, Charcoal, sans-serif">Impact</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                  </optgroup>
+                  <optgroup label="Google Fonts">
+                    <option value="'Inter', sans-serif">Inter</option>
+                    <option value="'Poppins', sans-serif">Poppins</option>
+                    <option value="'Montserrat', sans-serif" selected>Montserrat</option>
+                    <option value="'Raleway', sans-serif">Raleway</option>
+                    <option value="'Oswald', sans-serif">Oswald</option>
+                    <option value="'Anton', sans-serif">Anton</option>
+                    <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+                    <option value="'Roboto Condensed', sans-serif">Roboto Condensed</option>
+                    <option value="'Playfair Display', serif">Playfair Display</option>
+                    <option value="'Pacifico', cursive">Pacifico</option>
+                    <option value="'Space Mono', monospace">Space Mono</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="textSize">Ukuran</label>
+                  <input type="number" id="textSize" min="12" max="300" step="2" value="64">
+                </div>
+                <div class="field">
+                  <label for="textColor">Warna</label>
+                  <input type="color" id="textColor" value="#ffffff">
+                </div>
+              </div>
+              <button type="button" id="addTextBtn" class="btn btn-primary">＋ Tambah teks</button>
+              <div class="field">
+                <label for="subtitleInput">Subtitle (format: mulai-akhir|teks)</label>
+                <textarea id="subtitleInput" rows="5" placeholder="0-2|Halo semua&#10;2-4.5|Selamat datang"></textarea>
+                <small class="hint">Satu baris per subtitle. Waktu dalam detik.</small>
+              </div>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-audio" aria-labelledby="tab-audio" hidden>
+              <div class="field">
+                <label for="addAudioInput">Tambah musik</label>
+                <input type="file" id="addAudioInput" accept="audio/*">
+              </div>
+              <div class="btn-row">
+                <button type="button" id="beatBtn" class="btn">🥁 Deteksi beat</button>
+                <button type="button" id="autoCutBtn" class="btn btn-primary">⚡ Potong otomatis</button>
+              </div>
+              <p class="stat">Tempo: <strong id="bpmLabel">— BPM</strong></p>
+              <h3 class="sub-title">Lini masa</h3>
+              <div id="timeline" class="timeline" aria-label="Lini masa">
+                <div class="tl-track" data-track="video"></div>
+                <div class="tl-track" data-track="audio"></div>
+              </div>
+            </div>
+
+            <div class="tab-panel" role="tabpanel" id="panel-ekspor" aria-labelledby="tab-ekspor" hidden>
+              <div class="field">
+                <label for="resolutionSelect">Resolusi</label>
+                <select id="resolutionSelect">
+                  <option value="480p">480p</option>
+                  <option value="720p" selected>720p HD</option>
+                  <option value="1080p">1080p Full HD</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="formatSelect">Format</label>
+                <select id="formatSelect">
+                  <option value="mp4" selected>MP4</option>
+                  <option value="webm">WebM</option>
+                </select>
+              </div>
+              <button type="button" id="exportBtn" class="btn btn-primary btn-block">⬇ Ekspor video</button>
+              <div class="field">
+                <label for="exportProgress">Progres ekspor</label>
+                <progress id="exportProgress" max="1" value="0">0%</progress>
+              </div>
+              <p class="hint">Ekspor berjalan real-time. Biarkan tab tetap terbuka sampai selesai.</p>
+            </div>
+
+            <div class="chips" aria-label="Gaya populer">
+              <span class="chip">Jedag-Jedug</span>
+              <span class="chip">Cinematic</span>
+              <span class="chip">Retro</span>
+              <span class="chip">Aesthetic</span>
+              <span class="chip">Neon</span>
+            </div>
+          </section>
+        </main>
+
+        <footer class="statusbar">
+          <p id="statusLive" role="status" aria-live="polite">Siap. Tambahkan video atau gambar untuk memulai.</p>
+        </footer>
+      </div>
     </main>
 
-    <footer class="statusbar">
-      <p id="statusLive" role="status" aria-live="polite">Siap. Tambahkan video atau gambar untuk memulai.</p>
+    <footer class="site-footer" id="docs">
+      <div>
+        <strong>VEdit API</strong>
+        <p>Free video tools untuk creator, brand, dan tim marketing.</p>
+      </div>
+      <a href="#top">Kembali ke atas</a>
     </footer>
   </div>
 
