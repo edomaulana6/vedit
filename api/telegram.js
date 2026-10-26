@@ -35,39 +35,33 @@ export default async function handler(request, response) {
   }
 
   try {
-    // 1. Kirim pesan loading awal (0%)
-    const loadingText = "⏳ Memproses instruksi...\n\n[□□□□□□□□□□] 0%";
-    const messageId = await sendTelegramMessage(loadingText);
-
-    // 2. Animasi Loading (10% - 100%)
+    const messageId = await sendTelegramMessage("⏳ Memproses instruksi...\n\n[□□□□□□□□□□] 0%");
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    
-    // Perhatikan: sekarang ada 10 kotak penuh di akhir
+
+    // Animasi Loading (kita persingkat sedikit agar tidak timeout di Vercel)
     const bars = [
-      "[■□□□□□□□□□] 10%", 
-      "[■■□□□□□□□□] 20%", 
-      "[■■■□□□□□□□] 30%",
-      "[■■■■□□□□□□] 40%", 
-      "[■■■■■□□□□□] 50%", 
-      "[■■■■■■□□□□] 60%",
-      "[■■■■■■■□□□] 70%", 
-      "[■■■■■■■■□□] 80%", 
-      "[■■■■■■■■■□] 90%",
-      "[■■■■■■■■■■] 100%" // Ini tambahannya
+      "[■■□□□□□□□□] 20%", "[■■■■□□□□□□] 40%", 
+      "[■■■■■■□□□□] 60%", "[■■■■■■■■□□] 80%", 
+      "[■■■■■■■■■■] 100%"
     ];
 
     for (let i = 0; i < bars.length; i++) {
-      await sleep(500); // Jeda 0.5 detik per bar
+      await sleep(400); 
       await editTelegramMessage(messageId, `⏳ Memproses instruksi...\n\n${bars[i]}`);
     }
 
-    // 3. Proses Database (Hapus data lama & Simpan baru)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    await fetch(`${supabaseUrl}/rest/v1/perintah_edit?created_at=lt.${oneHourAgo}`, {
-      method: 'DELETE',
-      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-    });
+    // Bersih-bersih data lama (Kita bungkus try-catch agar kalau gagal, tidak menghentikan proses simpan)
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      await fetch(`${supabaseUrl}/rest/v1/perintah_edit?created_at=lt.${oneHourAgo}`, {
+        method: 'DELETE',
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+      });
+    } catch (e) {
+      console.log("Gagal hapus data lama, lanjut saja...");
+    }
 
+    // Simpan data baru
     const dbResponse = await fetch(`${supabaseUrl}/rest/v1/perintah_edit`, {
       method: 'POST',
       headers: {
@@ -79,18 +73,23 @@ export default async function handler(request, response) {
       body: JSON.stringify({ perintah: userText })
     });
 
-    if (!dbResponse.ok) throw new Error('Gagal menyimpan ke database');
+    // Jika database menolak, kita ambil pesan error aslinya
+    if (!dbResponse.ok) {
+      const errorData = await dbResponse.text();
+      throw new Error(`DB Error: ${errorData}`);
+    }
 
-    await sleep(800); // Jeda sebentar agar user sempat melihat 100%
+    await editTelegramMessage(messageId, `✅ <b>Berhasil!</b>\n\n[■■■■■■■■■■] 100%\n\nPerintah: "${userText}"\n\nSilakan cek website VEdit!`);
 
-    // 4. Pesan Final
-    await editTelegramMessage(messageId, `✅ <b>Berhasil diproses!</b>\n\n[■■■■■■■■■■] 100%\n\nPerintah: "${userText}"\n\nSilakan buka <a href="https://vedit-nine.vercel.app">website VEdit</a> untuk melihat hasilnya!`);
-
+    // KEMBALIKAN STATUS 200 AGAR TELEGRAM TIDAK SPAM
     return response.status(200).send('OK');
 
   } catch (error) {
-    console.error('Error:', error);
-    await sendTelegramMessage("❌ Maaf, terjadi kesalahan sistem saat memproses perintah.");
-    return response.status(500).send('Error');
+    console.error('Error:', error.message);
+    // Tampilkan error asli ke Telegram agar kita tahu apa yang salah
+    await sendTelegramMessage(`❌ <b>Gagal:</b>\n<code>${error.message}</code>`);
+    
+    // KEMBALIKAN STATUS 200 AGAR TELEGRAM TIDAK SPAM MESKIPUN ERROR
+    return response.status(200).send('OK'); 
   }
 }
