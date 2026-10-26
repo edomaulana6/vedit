@@ -8,21 +8,25 @@ export default async function handler(request, response) {
   const groqApiKey = process.env.GROQ_API_KEY;
   const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
   
-  // Ambil teks (bisa dari chat biasa, atau caption di gambar/video)
+  // Deteksi jenis pesan
   const userText = message.text || message.caption || "";
-  
-  // Deteksi jika user mengirim audio
+  const isPhoto = message.photo || message.document?.mime_type?.startsWith('image/');
   const isAudio = message.audio || message.voice;
+  const isVideo = message.video || message.document?.mime_type?.startsWith('video/');
+
+  // Beri tahu AI apa yang dikirim user
+  let mediaInfo = "";
+  if (isPhoto) mediaInfo = "[User mengirim sebuah GAMBAR/FOTO]";
+  if (isAudio) mediaInfo = "[User mengirim sebuah FILE AUDIO/MUSIK]";
+  if (isVideo) mediaInfo = "[User mengirim sebuah VIDEO]";
 
   let botReply = "";
 
   try {
-    if (isAudio) {
-      // Kalau yang dikirim audio, balas dengan pesan konfirmasi
-      botReply = "Wih, musiknya udah masuk nih! 🎵 Sekarang kirim videonya (boleh pakai caption instruksi editnya) biar aku gabungkan.";
-      
-    } else if (userText) {
-      // Kalau ada teks atau caption, kirim ke Groq AI
+    if (userText || mediaInfo) {
+      // Gabungkan teks user dengan info media
+      const promptToAI = `${userText} ${mediaInfo}`.trim();
+
       const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -32,19 +36,21 @@ export default async function handler(request, response) {
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b', 
           messages: [
-            { role: 'system', content: 'Kamu adalah asisten editor video AI. User mungkin mengirim gambar/video dengan instruksi. Jawab dengan ramah dan konfirmasi instruksinya.' },
-            { role: 'user', content: userText }
+            { 
+              role: 'system', 
+              content: 'Kamu adalah asisten AI VEdit. Kamu SANGAT JUJUR. Kamu BELUM BISA mengedit video secara otomatis. Jika user mengirim gambar/audio/video, pahami bahwa kamu menerimanya, tapi jelaskan dengan sopan bahwa mesin render video belum terpasang. Jangan pernah berjanji akan merender atau mengirim video dalam waktu tertentu (jangan berhalusinasi). Jawablah dengan santai dan cerdas.' 
+            },
+            { role: 'user', content: promptToAI }
           ],
-          temperature: 0.7,
+          temperature: 0.5, // Dibuat lebih rendah agar tidak banyak ngarang
         })
       });
 
       const groqData = await groqResponse.json();
-      botReply = groqData.choices[0]?.message?.content || 'Aku mengerti instruksinya, tapi otakku agak bingung.';
+      botReply = groqData.choices[0]?.message?.content || 'Aku mendengar instruksimu.';
 
     } else {
-      // Kalau kirim media tanpa teks sama sekali
-      botReply = "Gambar/videonya udah aku terima. Tapi tolong kasih caption instruksi ya, mau diapain ini?";
+      botReply = "Aku menerima pesanmu, tapi sepertinya bukan teks atau media yang bisa aku baca.";
     }
 
     // Kirim balik ke Telegram
