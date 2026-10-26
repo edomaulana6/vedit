@@ -29,6 +29,12 @@
         <a href="#docs">Dokumen</a>
       </nav>
 
+      <form class="api-key-box" id="apiKeyForm" aria-label="Masukkan API key">
+        <label class="sr-only" for="apiKeyInput">API Key</label>
+        <input id="apiKeyInput" type="password" placeholder="Masukkan API key" autocomplete="off" />
+        <button id="saveApiKeyBtn" type="submit">Simpan</button>
+      </form>
+
       <a class="nav-cta" href="#demo">Coba Gratis</a>
     </header>
 
@@ -392,6 +398,34 @@
   </div>
 
   <noscript><p class="noscript">VEdit memerlukan JavaScript agar dapat berjalan.</p></noscript>
+  <script>
+    (function () {
+      const form = document.getElementById('apiKeyForm');
+      const input = document.getElementById('apiKeyInput');
+      const storageKey = 'vedit.apiKey';
+
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) input.value = saved;
+      } catch (err) {}
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const value = input.value.trim();
+
+        try {
+          if (value) {
+            localStorage.setItem(storageKey, value);
+            input.value = value;
+            input.placeholder = 'API key tersimpan';
+          } else {
+            localStorage.removeItem(storageKey);
+            input.placeholder = 'Masukkan API key';
+          }
+        } catch (err) {}
+      });
+    })();
+  </script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
