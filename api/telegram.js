@@ -78,7 +78,7 @@ export default async function handler(request, response) {
     try { intentJson = JSON.parse(intentData.choices[0].message.content); } catch (e) {}
 
     // =======================================================
-    // TAHAP 2A: JIKA USER MAU DIBIKIN WEBSITE (ULTIMATE GOD MODE)
+    // TAHAP 2A: JIKA USER MAU DIBIKIN WEBSITE (HTML & CSS TERPISAH)
     // =======================================================
     if (intentJson.intent === "WEBSITE" && intentJson.tema) {
       const tema = intentJson.tema;
@@ -98,71 +98,69 @@ export default async function handler(request, response) {
         await editMsg(statusMsgId, steps[i]);
       }
 
-      // --- LANGKAH 1: AI MENULIS DRAF KODE (PROMPT SUPER KETAT) ---
-      const webPrompt = `Kamu adalah Senior UI/UX Designer dan Front-End Expert. Buatkan website e-commerce yang SANGAT MODERN dan MEMUKAU bertema: "${tema}".
+      // --- LANGKAH 1: AI MENULIS STRUKTUR HTML ---
+      const htmlPrompt = `Kamu adalah Web Developer. Buatkan struktur HTML murni untuk website bertema: "${tema}".
       
-      ATURAN DESAIN (SANGAT KETAT & WAJIB):
-      1. JANGAN GUNAKAN GAMBAR DARI INTERNET. Ganti visual produk dengan div berwarna (gradient) atau SVG yang relevan dengan tema.
-      2. GUNAKAN CSS GRID atau FLEXBOX untuk layout produk. Tampilkan produk dalam bentuk "Card" (Kartu) yang rapi.
-      3. Berikan efek visual pada kartu: border-radius (minimal 12px), box-shadow yang lembut, dan efek hover (transform: scale).
-      4. Gunakan CSS Variables (:root) untuk palet warna. Tema "${tema}" harus terlihat dari warnanya (misal: es tebu = hijau segar, teh = coklat, dll).
-      5. Typography: Gunakan Google Fonts 'Poppins' atau 'Inter'. Pastikan kontras teks dan background jelas.
-      6. Buat bagian "Header" dengan Navbar yang keren, dan bagian "Hero Section" yang besar dengan tombol Call-to-Action (CTA).
-      7. Responsif: Pastikan di HP, layout berubah menjadi 1 kolom vertikal yang rapi.
-      8. Jika ada fitur interaktif (seperti tombol "Beli" atau "Keranjang"), buat JavaScript-nya berfungsi penuh.
-      9. JANGAN berikan teks penjelasan apapun. HANYA kode HTML murni dari <!DOCTYPE html> sampai </html>.`;
+      ATURAN:
+      1. HANYA tulis kode HTML dari <!DOCTYPE html> sampai </html>.
+      2. Gunakan tag semantik (header, nav, main, section, footer).
+      3. Buat class yang jelas untuk setiap elemen (misal: class="hero", class="product-card", class="btn-buy").
+      4. JANGAN gunakan CSS atau JavaScript di tahap ini.
+      5. JANGAN gunakan gambar dari internet. Gunakan div kosong dengan class khusus (misal: <div class="product-image"></div>) yang nanti akan diwarnai oleh CSS.`;
 
-      const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const htmlRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b',
-          messages: [{ role: 'user', content: webPrompt }],
+          messages: [{ role: 'user', content: htmlPrompt }],
           temperature: 0.5,
-          max_tokens: 8000 
+          max_tokens: 4000 
         })
       });
 
-      const webData = await webRes.json();
-      let drafKode = webData.choices[0]?.message?.content || "";
-      drafKode = drafKode.replace(/```html/g, '').replace(/```/g, '').trim();
+      const htmlData = await htmlRes.json();
+      let strukturHTML = htmlData.choices[0]?.message?.content || "";
+      strukturHTML = strukturHTML.replace(/```html/g, '').replace(/```/g, '').trim();
 
-      if (!drafKode.includes('<html')) {
-        await sendMsg("Sori, gagal nulis kodenya di awal. Coba minta lagi.", message.message_id);
+      if (!strukturHTML.includes('<html')) {
+        await sendMsg("Sori, gagal nulis HTML-nya di awal. Coba minta lagi.", message.message_id);
         return response.status(200).send('OK');
       }
 
-      // --- LANGKAH 2: QA DESAIN & KEAMANAN (MATA AI TINGKAT DEWA) ---
-      const qaPrompt = `Kamu adalah Quality Assurance (QA) dan Security Expert yang SANGAT KETAT. 
-      Periksa kode HTML/CSS/JS berikut dan PERBAIKI SEMUA MASALAH ini:
-      1. Apakah ada <img> yang menggunakan URL internet? GANTI dengan CSS gradient atau SVG jika gambarnya tidak relevan dengan tema "${tema}".
-      2. Apakah ada teks yang warnanya menyatu dengan background? (Ubah agar kontras).
-      3. Apakah layout berantakan di HP? (Perbaiki media queries).
-      4. Apakah ada error JavaScript? (Perbaiki logikanya).
-      5. Apakah ada celah keamanan XSS? (Bersihkan).
+      // --- LANGKAH 2: AI MENULIS CSS (DESAIN) ---
+      const cssPrompt = `Kamu adalah UI/UX Designer Expert. Buatkan kode CSS yang SANGAT CANTIK dan MODERN untuk struktur HTML bertema "${tema}" berikut ini:
       
-      Kembalikan kode HTML final yang sudah diperbaiki dan SANGAT SEMPURNA. 
-      HANYA balas dengan kode HTML dari <!DOCTYPE html> sampai </html>.
+      ${strukturHTML}
       
-      KODE AWAL:
-      ${drafKode}`;
+      ATURAN DESAIN:
+      1. HANYA tulis kode CSS murni (tanpa tag <style>).
+      2. Gunakan CSS Variables (:root) untuk palet warna yang sesuai tema "${tema}".
+      3. Desain harus responsif (gunakan Flexbox/Grid).
+      4. Berikan efek visual: box-shadow, border-radius, hover effects, dan transisi yang halus.
+      5. Untuk class "product-image", berikan background gradient atau warna solid yang menarik (karena kita tidak pakai gambar).
+      6. Pastikan kontras teks dan background sangat jelas.
+      7. Desain harus terlihat seperti website profesional, bukan website jadul.`;
 
-      const qaRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const cssRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b',
-          messages: [{ role: 'user', content: qaPrompt }],
-          temperature: 0.3, 
-          max_tokens: 8000 
+          messages: [{ role: 'user', content: cssPrompt }],
+          temperature: 0.5,
+          max_tokens: 4000 
         })
       });
 
-      const qaData = await qaRes.json();
-      let finalKode = qaData.choices[0]?.message?.content || drafKode; 
-      finalKode = finalKode.replace(/```html/g, '').replace(/```/g, '').trim();
+      const cssData = await cssRes.json();
+      let kodeCSS = cssData.choices[0]?.message?.content || "";
+      kodeCSS = kodeCSS.replace(/```css/g, '').replace(/```/g, '').trim();
 
-      // --- LANGKAH 3: SIMPAN DATA LENGKAP KE "SUPER DATABASE" ---
+      // --- LANGKAH 3: GABUNGKAN HTML DAN CSS ---
+      let finalKode = strukturHTML.replace('</head>', `<style>\n${kodeCSS}\n</style>\n</head>`);
+
+      // --- LANGKAH 4: SIMPAN DATA LENGKAP KE "SUPER DATABASE" ---
       const slug = tema.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20) + '-' + Date.now().toString().slice(-4);
       
       const dbRes = await fetch(`${supabaseUrl}/rest/v1/websites`, {
