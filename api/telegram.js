@@ -44,7 +44,7 @@ export default async function handler(request, response) {
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   if (userText === '/start') {
-    await sendMsg(`Halo <b>${userName}</b>! Gue asisten pinter di sini. Mau ngobrol sarkas, atau mau gue bikinin website yang super kompleks dan siap tempur? Kasih tau aja idenya.`);
+    await sendMsg(`Halo <b>${userName}</b>! Gue asisten pinter di sini. Mau ngobrol sarkas, atau mau gue bikinin aplikasi web yang super kompleks dan siap tempur? Kasih tau aja idenya.`);
     return response.status(200).send('OK');
   }
 
@@ -59,7 +59,7 @@ export default async function handler(request, response) {
     // =======================================================
     const intentPrompt = `Kamu adalah sistem pendeteksi niat. 
     User berkata: "${userText}"
-    Tugasmu: Tentukan apakah user ingin DIBUATKAN WEBSITE atau cuma NGOBROL BIASA.
+    Tugasmu: Tentukan apakah user ingin DIBUATKAN WEBSITE/APLIKASI atau cuma NGOBROL BIASA.
     Jawab HANYA dengan format JSON: { "intent": "WEBSITE", "tema": "tema website" } ATAU { "intent": "CHAT", "tema": "" }`;
 
     const intentRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -78,12 +78,12 @@ export default async function handler(request, response) {
     try { intentJson = JSON.parse(intentData.choices[0].message.content); } catch (e) {}
 
     // =======================================================
-    // TAHAP 2A: JIKA USER MAU DIBIKIN WEBSITE (HTML & CSS TERPISAH)
+    // TAHAP 2A: JIKA USER MAU DIBIKIN APLIKASI/WEB
     // =======================================================
     if (intentJson.intent === "WEBSITE" && intentJson.tema) {
       const tema = intentJson.tema;
       
-      const statusMsgId = await sendMsg(`🧠 <b>Memulai Analisis Mendalam...</b>\n\nOke, gue bikinin website <b>${tema}</b>. Gue mau mikirin arsitektur UI/UX yang paling kompleks dan memastikan kodenya nggak ada bug. Ini bakal makan waktu sekitar <b>5 menit atau lebih</b>. Jangan kemana-mana ya...`, message.message_id);
+      const statusMsgId = await sendMsg(`🧠 <b>Memulai Analisis Mendalam...</b>\n\nOke, gue bikinin aplikasi web <b>${tema}</b>. Gue mau mikirin arsitektur UI/UX dan logika JavaScript-nya yang paling kompleks. Ini bakal makan waktu sekitar <b>5 menit atau lebih</b>. Jangan kemana-mana ya...`, message.message_id);
 
       const steps = [
         "🔍 <b>Fase 1: Riset & Wireframing</b>\nLagi nyusun struktur HTML dan layout CSS yang paling pas... (10%)",
@@ -98,69 +98,40 @@ export default async function handler(request, response) {
         await editMsg(statusMsgId, steps[i]);
       }
 
-      // --- LANGKAH 1: AI MENULIS STRUKTUR HTML ---
-      const htmlPrompt = `Kamu adalah Web Developer. Buatkan struktur HTML murni untuk website bertema: "${tema}".
+      // --- LANGKAH 1: AI MENULIS KODE APLIKASI (HTML+CSS+JS) ---
+      const webPrompt = `Kamu adalah Senior Full-Stack Developer. Tugasmu membuat APLIKASI WEB (bukan sekadar landing page) bertema: "${tema}".
       
-      ATURAN:
-      1. HANYA tulis kode HTML dari <!DOCTYPE html> sampai </html>.
-      2. Gunakan tag semantik (header, nav, main, section, footer).
-      3. Buat class yang jelas untuk setiap elemen (misal: class="hero", class="product-card", class="btn-buy").
-      4. JANGAN gunakan CSS atau JavaScript di tahap ini.
-      5. JANGAN gunakan gambar dari internet. Gunakan div kosong dengan class khusus (misal: <div class="product-image"></div>) yang nanti akan diwarnai oleh CSS.`;
+      ATURAN KETAT:
+      1. Buat kode LENGKAP (HTML + CSS + JS) dalam 1 file. Mulai dari <!DOCTYPE html> sampai </html>.
+      2. JANGAN hanya membuat tampilan UI. KAMU WAJIB menulis logika JavaScript (di dalam <script>) yang berfungsi penuh.
+      3. Jika tema adalah alat (kalkulator, konverter, to-do list, game), pastikan semua tombol dan input bekerja dan mengubah data di layar secara real-time.
+      4. Gunakan algoritma JavaScript yang benar (misal: jika kalkulator, buat fungsi untuk menghitung; jika game, buat fungsi untuk pergerakan).
+      5. Desain UI harus modern (gunakan CSS Variables, Flexbox/Grid, box-shadow, border-radius).
+      6. JANGAN gunakan gambar dari internet. Gunakan warna, gradient, atau SVG.
+      7. Layout harus lebar (max-width: 1200px) dan responsif di HP.
+      8. JANGAN berikan teks penjelasan apapun. HANYA kode HTML murni dari <!DOCTYPE html> sampai </html>.`;
 
-      const htmlRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b',
-          messages: [{ role: 'user', content: htmlPrompt }],
+          messages: [{ role: 'user', content: webPrompt }],
           temperature: 0.5,
-          max_tokens: 4000 
+          max_tokens: 8000 
         })
       });
 
-      const htmlData = await htmlRes.json();
-      let strukturHTML = htmlData.choices[0]?.message?.content || "";
-      strukturHTML = strukturHTML.replace(/```html/g, '').replace(/```/g, '').trim();
+      const webData = await webRes.json();
+      let finalKode = webData.choices[0]?.message?.content || "";
+      finalKode = finalKode.replace(/```html/g, '').replace(/```/g, '').trim();
 
-      if (!strukturHTML.includes('<html')) {
-        await sendMsg("Sori, gagal nulis HTML-nya di awal. Coba minta lagi.", message.message_id);
+      if (!finalKode.includes('<html')) {
+        await sendMsg("Sori, gagal nulis kodenya. Coba minta lagi.", message.message_id);
         return response.status(200).send('OK');
       }
 
-      // --- LANGKAH 2: AI MENULIS CSS (DESAIN) ---
-      const cssPrompt = `Kamu adalah UI/UX Designer Expert. Buatkan kode CSS yang SANGAT CANTIK dan MODERN untuk struktur HTML bertema "${tema}" berikut ini:
-      
-      ${strukturHTML}
-      
-      ATURAN DESAIN:
-      1. HANYA tulis kode CSS murni (tanpa tag <style>).
-      2. Gunakan CSS Variables (:root) untuk palet warna yang sesuai tema "${tema}".
-      3. Desain harus responsif (gunakan Flexbox/Grid).
-      4. Berikan efek visual: box-shadow, border-radius, hover effects, dan transisi yang halus.
-      5. Untuk class "product-image", berikan background gradient atau warna solid yang menarik (karena kita tidak pakai gambar).
-      6. Pastikan kontras teks dan background sangat jelas.
-      7. Desain harus terlihat seperti website profesional, bukan website jadul.`;
-
-      const cssRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          messages: [{ role: 'user', content: cssPrompt }],
-          temperature: 0.5,
-          max_tokens: 4000 
-        })
-      });
-
-      const cssData = await cssRes.json();
-      let kodeCSS = cssData.choices[0]?.message?.content || "";
-      kodeCSS = kodeCSS.replace(/```css/g, '').replace(/```/g, '').trim();
-
-      // --- LANGKAH 3: GABUNGKAN HTML DAN CSS ---
-      let finalKode = strukturHTML.replace('</head>', `<style>\n${kodeCSS}\n</style>\n</head>`);
-
-      // --- LANGKAH 4: SIMPAN DATA LENGKAP KE "SUPER DATABASE" ---
+      // --- LANGKAH 2: SIMPAN DATA LENGKAP KE "SUPER DATABASE" ---
       const slug = tema.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20) + '-' + Date.now().toString().slice(-4);
       
       const dbRes = await fetch(`${supabaseUrl}/rest/v1/websites`, {
@@ -182,7 +153,7 @@ export default async function handler(request, response) {
 
       if (!dbRes.ok) throw new Error("Gagal menyimpan ke Super Database");
 
-      await editMsg(statusMsgId, `✅ <b>Proses Selesai!</b>\n\nWebsite <b>${tema}</b> sudah jadi, sudah di-QA, dan dipastikan aman serta desainnya presisi. Silakan cek di sini:\nhttps://vexora.devs.li/web/${slug}`);
+      await editMsg(statusMsgId, `✅ <b>Proses Selesai!</b>\n\nAplikasi <b>${tema}</b> sudah jadi dan logikanya berfungsi. Silakan cek di sini:\nhttps://vexora.devs.li/web/${slug}`);
       
       return response.status(200).send('OK');
     }
