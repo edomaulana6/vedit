@@ -86,30 +86,48 @@ export default async function handler(request, response) {
       const statusMsgId = await sendMsg(`🧠 <b>Memulai Analisis Mendalam...</b>\n\nOke, gue bikinin aplikasi web <b>${tema}</b>. Gue mau mikirin arsitektur UI/UX dan logika JavaScript-nya yang paling kompleks. Ini bakal makan waktu sekitar <b>5 menit atau lebih</b>. Jangan kemana-mana ya...`, message.message_id);
 
       const steps = [
-        "🔍 <b>Fase 1: Riset & Wireframing</b>\nLagi nyusun struktur HTML dan layout CSS yang paling pas... (10%)",
-        "🎨 <b>Fase 2: Desain UI/UX</b>\nLagi mikirin kombinasi warna, font, dan animasi transisi yang bikin mata terpukau... (30%)",
-        "⚙️ <b>Fase 3: Logika & Interaktivitas</b>\nLagi nulis JavaScript buat bikin fitur-fitur sensitif lu berjalan mulus tanpa error... (60%)",
-        "🛡️ <b>Fase 4: Security & QA Review</b>\nLagi ngecek celah XSS, error tag HTML, dan mastiin layout responsif di HP... (85%)",
-        "✨ <b>Fase 5: Finalisasi</b>\nHampir kelar nih, lagi poles dikit biar sempurna... (99%)"
+        "🔍 <b>Fase 1: Riset & Wireframing</b>\nLagi nyusun struktur HTML... (20%)",
+        "🎨 <b>Fase 2: Desain UI/UX</b>\nLagi mikirin warna dan animasi... (40%)",
+        "⚙️ <b>Fase 3: Logika JavaScript</b>\nLagi nulis fungsi biar tombolnya jalan... (60%)",
+        "🛡️ <b>Fase 4: Security & QA</b>\nLagi ngecek error dan celah keamanan... (80%)",
+        "✨ <b>Fase 5: Finalisasi</b>\nHampir kelar nih, poles dikit... (99%)"
       ];
 
       for (let i = 0; i < steps.length; i++) {
-        await sleep(4000); 
+        await sleep(1500); // Jeda 1.5 detik agar tidak kena timeout Vercel
         await editMsg(statusMsgId, steps[i]);
       }
 
-      // --- LANGKAH 1: AI MENULIS KODE APLIKASI (HTML+CSS+JS) ---
-      const webPrompt = `Kamu adalah Senior Full-Stack Developer. Tugasmu membuat APLIKASI WEB (bukan sekadar landing page) bertema: "${tema}".
+      // --- LANGKAH 1: AI MENULIS KODE APLIKASI (PROMPT TINGKAT DEWA) ---
+      const webPrompt = `Kamu adalah seorang Senior Full-Stack Web Developer dan UI/UX Designer tingkat dewa. 
       
-      ATURAN KETAT:
-      1. Buat kode LENGKAP (HTML + CSS + JS) dalam 1 file. Mulai dari <!DOCTYPE html> sampai </html>.
-      2. JANGAN hanya membuat tampilan UI. KAMU WAJIB menulis logika JavaScript (di dalam <script>) yang berfungsi penuh.
-      3. Jika tema adalah alat (kalkulator, konverter, to-do list, game), pastikan semua tombol dan input bekerja dan mengubah data di layar secara real-time.
-      4. Gunakan algoritma JavaScript yang benar (misal: jika kalkulator, buat fungsi untuk menghitung; jika game, buat fungsi untuk pergerakan).
-      5. Desain UI harus modern (gunakan CSS Variables, Flexbox/Grid, box-shadow, border-radius).
-      6. JANGAN gunakan gambar dari internet. Gunakan warna, gradient, atau SVG.
-      7. Layout harus lebar (max-width: 1200px) dan responsif di HP.
-      8. JANGAN berikan teks penjelasan apapun. HANYA kode HTML murni dari <!DOCTYPE html> sampai </html>.`;
+      TUGAS UTAMA KAMU:
+      Buatkan aplikasi web fungsional bertema: "${tema}". 
+      Aplikasi ini HARUS BENERAN BERFUNGSI, bukan sekadar tampilan (UI) kosong.
+
+      ======================================================================
+      ⚠️ PERINGATAN KERAS (BACA DULU):
+      Jika kamu hanya membalas dengan HTML dan CSS tanpa tag <script> yang berisi logika JavaScript yang berfungsi, maka KAMU GAGAL SEBAGAI PROGRAMMER.
+      ======================================================================
+
+      ATURAN DESAIN UI/UX (WAJIB MODERN & PREMIUM):
+      1. Gunakan CSS Variables (:root) untuk mendefinisikan palet warna. Sesuaikan warna dengan tema "${tema}".
+      2. Layout utama menggunakan Flexbox atau CSS Grid, dengan max-width: 1200px dan diposisikan di tengah layar (margin: 0 auto). Jangan biarkan konten mengecil.
+      3. Gunakan efek visual modern seperti glassmorphism (background semi-transparan, backdrop-filter: blur), border-radius besar (15-20px), dan box-shadow yang halus.
+      4. Typography: Gunakan Google Fonts (Poppins/Inter). Pastikan kontras teks dan background sangat jelas.
+      5. JANGAN GUNAKAN GAMBAR DARI INTERNET. Gunakan gradient CSS, shapes, atau icon SVG inline.
+      6. Responsif: Pastikan layout berubah menjadi 1 kolom vertikal di HP.
+
+      ATURAN LOGIKA (JIKA APLIKASI BUTUH INTERAKSI):
+      1. Jika tema adalah alat (kalkulator, konverter, downloader, to-do list), WAJIB tulis logika JavaScript di dalam <script>.
+      2. Pastikan semua tombol, input, dan event listener berfungsi penuh dan mengubah data di layar.
+      3. Gunakan try-catch untuk menangani error jaringan atau input yang salah.
+      4. Tampilkan pesan loading saat proses berjalan, dan pesan error/sukses yang jelas ke user.
+
+      STRUKTUR KODE:
+      - Balas HANYA dengan kode HTML murni dari <!DOCTYPE html> sampai </html>.
+      - Gabungkan CSS di dalam <style> dan JS di dalam <script>.
+      - JANGAN ada teks penjelasan apapun di luar kode.`;
 
       const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
