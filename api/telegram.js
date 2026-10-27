@@ -78,15 +78,13 @@ export default async function handler(request, response) {
     try { intentJson = JSON.parse(intentData.choices[0].message.content); } catch (e) {}
 
     // =======================================================
-    // TAHAP 2A: JIKA USER MAU DIBIKIN WEBSITE (GOD MODE)
+    // TAHAP 2A: JIKA USER MAU DIBIKIN WEBSITE (ULTIMATE GOD MODE)
     // =======================================================
     if (intentJson.intent === "WEBSITE" && intentJson.tema) {
       const tema = intentJson.tema;
       
-      // Kirim pesan awal dan simpan message ID-nya agar bisa diedit (animasi loading)
       const statusMsgId = await sendMsg(`🧠 <b>Memulai Analisis Mendalam...</b>\n\nOke, gue bikinin website <b>${tema}</b>. Gue mau mikirin arsitektur UI/UX yang paling kompleks dan memastikan kodenya nggak ada bug. Ini bakal makan waktu sekitar <b>5 menit atau lebih</b>. Jangan kemana-mana ya...`, message.message_id);
 
-      // --- ILUSI WAKTU BERPIKIR (Animasi Loading) ---
       const steps = [
         "🔍 <b>Fase 1: Riset & Wireframing</b>\nLagi nyusun struktur HTML dan layout CSS yang paling pas... (10%)",
         "🎨 <b>Fase 2: Desain UI/UX</b>\nLagi mikirin kombinasi warna, font, dan animasi transisi yang bikin mata terpukau... (30%)",
@@ -96,20 +94,23 @@ export default async function handler(request, response) {
       ];
 
       for (let i = 0; i < steps.length; i++) {
-        await sleep(4000); // Jeda 4 detik per tahap agar terasa benar-benar berpikir (total ~20 detik)
+        await sleep(4000); 
         await editMsg(statusMsgId, steps[i]);
       }
 
-      // --- LANGKAH 1: AI MENULIS DRAF KODE (PROMPT SUPER KOMPLEKS) ---
+      // --- LANGKAH 1: AI MENULIS DRAF KODE (PROMPT SUPER KETAT) ---
       const webPrompt = `Kamu adalah Principal Software Engineer dan UI/UX Designer tingkat dewa. 
       Tugasmu membuat website bertema: "${tema}".
       
-      ATURAN KETAT:
-      1. Buat kode LENGKAP (HTML+CSS+JS) dalam 1 file. Mulai dari <!DOCTYPE html> sampai </html>.
-      2. Desain harus SANGAT MODERN, mewah, dan tidak pasaran. Gunakan layout yang kompleks (misal: Grid, Flexbox, animasi CSS, efek glassmorphism/neomorphism).
-      3. Wajib responsif di HP dan Desktop.
-      4. Buat JavaScript yang berfungsi penuh. Jika ada fitur interaktif (form, kalkulator, keranjang, game kecil, slider), pastikan logikanya sangat rumit tapi berjalan sempurna.
-      5. JANGAN berikan teks penjelasan apapun. HANYA kode murni.`;
+      ATURAN DESAIN (SANGAT KETAT & WAJIB):
+      1. JANGAN GUNAKAN GAMBAR DARI INTERNET (URL). Kamu DILARANG menggunakan <img> dengan src http/https karena gambarnya sering mati atau tidak relevan. 
+      2. Ganti gambar dengan elemen visual CSS: Gradient, kotak berwarna, atau SVG inline.
+      3. Gunakan CSS Variables (:root) untuk mendefinisikan palet warna utama. Pastikan kontras teks dan background SANGAT JELAS (jangan teks putih di background putih).
+      4. Layout WAJIB rapi menggunakan Flexbox atau CSS Grid. Beri padding minimal 16px agar tidak sesak.
+      5. Gunakan Google Fonts (Inter, Poppins, atau Roboto) untuk tipografi yang profesional.
+      6. Desain harus responsif (media queries) dan tidak ada elemen yang meluber keluar layar HP.
+      7. Buat JavaScript yang berfungsi penuh (form, kalkulator, keranjang, dll) jika diminta.
+      8. JANGAN berikan teks penjelasan. HANYA kode HTML murni dari <!DOCTYPE html> sampai </html>.`;
 
       const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -117,8 +118,8 @@ export default async function handler(request, response) {
         body: JSON.stringify({
           model: 'openai/gpt-oss-120b',
           messages: [{ role: 'user', content: webPrompt }],
-          temperature: 0.6,
-          max_tokens: 8000 // Token maksimal
+          temperature: 0.5,
+          max_tokens: 8000 
         })
       });
 
@@ -131,16 +132,17 @@ export default async function handler(request, response) {
         return response.status(200).send('OK');
       }
 
-      // --- LANGKAH 2: AI MEMERIKSA KODENYA SENDIRI (MATA AI / QA TINGKAT TINGGI) ---
+      // --- LANGKAH 2: QA DESAIN & KEAMANAN (MATA AI TINGKAT DEWA) ---
       const qaPrompt = `Kamu adalah Quality Assurance (QA) dan Security Expert yang SANGAT KETAT. 
-      Tugasmu memeriksa dan MEMPERBAIKI kode berikut. Cari kesalahan fatal seperti:
-      1. HTML tidak tertutup atau CSS berantakan.
-      2. JavaScript yang error atau logika yang salah.
-      3. Kerentanan keamanan (XSS, script jahat).
-      4. UI yang pecah di layar HP (media queries).
+      Periksa kode HTML/CSS/JS berikut dan PERBAIKI SEMUA MASALAH ini:
+      1. Apakah ada <img> yang menggunakan URL internet? GANTI dengan CSS gradient atau SVG jika gambarnya tidak relevan dengan tema "${tema}".
+      2. Apakah ada teks yang warnanya menyatu dengan background? (Ubah agar kontras).
+      3. Apakah layout berantakan di HP? (Perbaiki media queries).
+      4. Apakah ada error JavaScript? (Perbaiki logikanya).
+      5. Apakah ada celah keamanan XSS? (Bersihkan).
       
-      PERBAIKI kodenya menjadi VERSI FINAL YANG SEMPURNA.
-      Balas HANYA dengan kode HTML final. Jangan ada teks apapun dari <!DOCTYPE html> sampai </html>.
+      Kembalikan kode HTML final yang sudah diperbaiki dan SANGAT SEMPURNA. 
+      HANYA balas dengan kode HTML dari <!DOCTYPE html> sampai </html>.
       
       KODE AWAL:
       ${drafKode}`;
@@ -182,8 +184,7 @@ export default async function handler(request, response) {
 
       if (!dbRes.ok) throw new Error("Gagal menyimpan ke Super Database");
 
-      // Hapus pesan loading dan ganti dengan pesan sukses
-      await editMsg(statusMsgId, `✅ <b>Proses Selesai!</b>\n\nWebsite <b>${tema}</b> sudah jadi, sudah di-QA, dan dipastikan aman serta kompleks. Silakan cek di sini:\nhttps://vexora.devs.li/web/${slug}`);
+      await editMsg(statusMsgId, `✅ <b>Proses Selesai!</b>\n\nWebsite <b>${tema}</b> sudah jadi, sudah di-QA, dan dipastikan aman serta desainnya presisi. Silakan cek di sini:\nhttps://vexora.devs.li/web/${slug}`);
       
       return response.status(200).send('OK');
     }
