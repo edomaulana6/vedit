@@ -6,6 +6,12 @@
   "installCommand": null,
   "framework": null,
   "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/web/:slug",
+      "destination": "/api/tampil-web?slug=:slug"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
