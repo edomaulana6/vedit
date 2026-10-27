@@ -99,18 +99,18 @@ export default async function handler(request, response) {
       }
 
       // --- LANGKAH 1: AI MENULIS DRAF KODE (PROMPT SUPER KETAT) ---
-      const webPrompt = `Kamu adalah Principal Software Engineer dan UI/UX Designer tingkat dewa. 
-      Tugasmu membuat website bertema: "${tema}".
+      const webPrompt = `Kamu adalah Senior UI/UX Designer dan Front-End Expert. Buatkan website e-commerce yang SANGAT MODERN dan MEMUKAU bertema: "${tema}".
       
       ATURAN DESAIN (SANGAT KETAT & WAJIB):
-      1. JANGAN GUNAKAN GAMBAR DARI INTERNET (URL). Kamu DILARANG menggunakan <img> dengan src http/https karena gambarnya sering mati atau tidak relevan. 
-      2. Ganti gambar dengan elemen visual CSS: Gradient, kotak berwarna, atau SVG inline.
-      3. Gunakan CSS Variables (:root) untuk mendefinisikan palet warna utama. Pastikan kontras teks dan background SANGAT JELAS (jangan teks putih di background putih).
-      4. Layout WAJIB rapi menggunakan Flexbox atau CSS Grid. Beri padding minimal 16px agar tidak sesak.
-      5. Gunakan Google Fonts (Inter, Poppins, atau Roboto) untuk tipografi yang profesional.
-      6. Desain harus responsif (media queries) dan tidak ada elemen yang meluber keluar layar HP.
-      7. Buat JavaScript yang berfungsi penuh (form, kalkulator, keranjang, dll) jika diminta.
-      8. JANGAN berikan teks penjelasan. HANYA kode HTML murni dari <!DOCTYPE html> sampai </html>.`;
+      1. JANGAN GUNAKAN GAMBAR DARI INTERNET. Ganti visual produk dengan div berwarna (gradient) atau SVG yang relevan dengan tema.
+      2. GUNAKAN CSS GRID atau FLEXBOX untuk layout produk. Tampilkan produk dalam bentuk "Card" (Kartu) yang rapi.
+      3. Berikan efek visual pada kartu: border-radius (minimal 12px), box-shadow yang lembut, dan efek hover (transform: scale).
+      4. Gunakan CSS Variables (:root) untuk palet warna. Tema "${tema}" harus terlihat dari warnanya (misal: es tebu = hijau segar, teh = coklat, dll).
+      5. Typography: Gunakan Google Fonts 'Poppins' atau 'Inter'. Pastikan kontras teks dan background jelas.
+      6. Buat bagian "Header" dengan Navbar yang keren, dan bagian "Hero Section" yang besar dengan tombol Call-to-Action (CTA).
+      7. Responsif: Pastikan di HP, layout berubah menjadi 1 kolom vertikal yang rapi.
+      8. Jika ada fitur interaktif (seperti tombol "Beli" atau "Keranjang"), buat JavaScript-nya berfungsi penuh.
+      9. JANGAN berikan teks penjelasan apapun. HANYA kode HTML murni dari <!DOCTYPE html> sampai </html>.`;
 
       const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
