@@ -4,6 +4,7 @@ export default async function handler(request, response) {
 
   const { message, callback_query } = request.body;
 
+  // Handle Callback Query (Tombol Inline)
   if (callback_query) {
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
     await fetch(`https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`, {
@@ -28,6 +29,7 @@ export default async function handler(request, response) {
   
   if (!userText && !message.photo && !message.video && !message.sticker) return response.status(200).send('OK');
 
+  // Helper untuk kirim pesan
   const sendMsg = async (text, replyTo = null, replyMarkup = null) => {
     const payload = { chat_id: chatId, text: text, parse_mode: 'HTML' };
     if (replyTo) payload.reply_to_message_id = replyTo;
@@ -40,71 +42,41 @@ export default async function handler(request, response) {
     return (await res.json()).result?.message_id;
   };
 
+  // Helper untuk status "typing..." biar Vercel gak matiin proses
+  const sendTyping = async () => {
+    await fetch(`https://api.telegram.org/bot${telegramToken}/sendChatAction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, action: 'typing' })
+    });
+  };
+
   if (userText === '/start') {
     await sendMsg(`Halo <b>${userName}</b>! Ketik /tools buat lihat kemampuan gue.`);
     return response.status(200).send('OK');
   }
 
   if (userText === '/tools') {
-    const menuText = `🛠️ <b>Tools VEdit</b>\n\n• <code>/search [kata]</code>\n• <code>/wiki [topik]</code>\n• <code>/weather [kota]</code>\n• <code>/crypto [koin]</code>\n• <code>/calc [angka]</code>\n• <code>/qr [teks]</code>\n• <code>/password [panjang]</code>\n\n<i>Atau ngobrol natural aja!</i>`;
+    const menuText = `🛠️ <b>Tools VEdit</b>\n\n• <code>/search [kata]</code>\n• <code>/weather [kota]</code>\n• <code>/crypto [koin]</code>\n\n<i>Atau ngobrol natural aja!</i>`;
     const keyboard = { inline_keyboard: [[{ text: '🔍 Search', callback_data: 'tool_search' }]] };
     await sendMsg(menuText, message.message_id, keyboard);
     return response.status(200).send('OK');
   }
 
-  // KUNCI: Kirim OK duluan biar Vercel gak timeout
-  response.status(200).send('OK'); 
-
   try {
-    if (!groqApiKey) return await sendMsg("❌ ERROR: GROQ_API_KEY belum diisi di Vercel!", message.message_id);
-    if (!supabaseUrl || !supabaseKey) return await sendMsg("❌ ERROR: URL/Key Supabase belum diisi!", message.message_id);
+    if (!groqApiKey) return await sendMsg("❌ ERROR: GROQ_API_KEY belum diisi di Vercel!");
 
-    // =======================================================
-    // CEK PENDING KLARIFIKASI (Supabase)
-    // =======================================================
-    let pendingId = null;
-    try {
-      const pendingRes = await fetch(`${supabaseUrl}/rest/v1/pending_requests?chat_id=eq.${chatId}&state=eq.WAITING_CLARIFICATION&limit=1`, { 
-        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
-      });
-      const pendingData = await pendingRes.json();
-      if (Array.isArray(pendingData) && pendingData.length > 0) {
-        pendingId = pendingData[0].id;
-        userText = `Request awal: "${pendingData[0].original_request}". Jawaban: "${userText}"`;
-      }
-    } catch (e) {
-      console.error("Gagal cek pending_requests:", e.message);
-    }
-
-    if (pendingId) {
-      await fetch(`${supabaseUrl}/rest/v1/pending_requests?id=eq.${pendingId}`, { 
-        method: 'DELETE', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
-      });
-    }
-
-    // SIMPAN PESAN USER (Supabase)
-    try {
-      const saveRes = await fetch(`${supabaseUrl}/rest/v1/chat_history`, { 
-        method: 'POST', 
-        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, 
-        body: JSON.stringify([{ chat_id: String(chatId), role: 'user', content: userText }]) 
-      });
-      if (!saveRes.ok) console.error("Gagal simpan chat_history:", await saveRes.text());
-    } catch (e) {
-      console.error("Error koneksi ke Supabase:", e.message);
-    }
+    // Tampilkan status "typing..." biar user tau bot lagi mikir
+    await sendTyping();
 
     // =======================================================
     // AI & TOOLS (Groq)
     // =======================================================
     const tools = [
       { type: "function", function: { name: "web_search", description: "Cari info terbaru di internet", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } },
-      { type: "function", function: { name: "wikipedia", description: "Ringkasan Wikipedia", parameters: { type: "object", properties: { topic: { type: "string" } }, required: ["topic"] } } },
       { type: "function", function: { name: "weather", description: "Cek cuaca", parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] } } },
       { type: "function", function: { name: "crypto_price", description: "Harga crypto", parameters: { type: "object", properties: { coin: { type: "string" } }, required: ["coin"] } } },
-      { type: "function", function: { name: "calculate", description: "Kalkulator matematika", parameters: { type: "object", properties: { expression: { type: "string" } }, required: ["expression"] } } },
-      { type: "function", function: { name: "qr_generate", description: "Bikin QR Code", parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] } } },
-      { type: "function", function: { name: "password_generate", description: "Generate password", parameters: { type: "object", properties: { length: { type: "number" } }, required: ["length"] } } }
+      { type: "function", function: { name: "calculate", description: "Kalkulator matematika", parameters: { type: "object", properties: { expression: { type: "string" } }, required: ["expression"] } } }
     ];
 
     const systemPrompt = `Kamu adalah AI VEdit. Nama user: "${userName}". Kepribadian: Cerdas, sarkas, sopan. Gunakan tools yang tersedia jika perlu.`;
@@ -123,15 +95,12 @@ export default async function handler(request, response) {
 
     if (!aiRes.ok) {
       const errData = await aiRes.text();
-      return await sendMsg(`❌ ERROR GROQ API (${aiRes.status}): ${errData}`, message.message_id);
+      return await sendMsg(`❌ ERROR GROQ API (${aiRes.status}): ${errData}`);
     }
 
     const aiData = await aiRes.json();
     const aiMessage = aiData.choices[0]?.message;
 
-    // =======================================================
-    // JIKA AI MEMILIH TOOL
-    // =======================================================
     if (aiMessage.tool_calls) {
       const toolCall = aiMessage.tool_calls[0];
       const toolName = toolCall.function.name;
@@ -140,16 +109,11 @@ export default async function handler(request, response) {
 
       try {
         if (toolName === 'web_search') {
-          if (!tavilyKey) throw new Error("TAVILY_API_KEY belum diset di Vercel.");
+          if (!tavilyKey) throw new Error("TAVILY_API_KEY belum diset.");
           const r = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: tavilyKey, query: args.query, max_results: 3 }) });
           const d = await r.json();
           toolResult = d.results ? d.results.map(x => `- ${x.title}: ${x.content}`).join('\n') : "Tidak ada hasil.";
         } 
-        else if (toolName === 'wikipedia') {
-          const r = await fetch(`https://id.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(args.topic)}`);
-          const d = await r.json();
-          toolResult = d.extract || "Topik tidak ditemukan.";
-        }
         else if (toolName === 'weather') {
           const geo = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.city)}&count=1`)).json();
           if (!geo.results) throw new Error("Kota tidak ditemukan.");
@@ -169,17 +133,8 @@ export default async function handler(request, response) {
           const math = new Function('return ' + args.expression.replace(/[^0-9+\-*/().]/g, ''));
           toolResult = `Hasil: ${math()}`;
         }
-        else if (toolName === 'qr_generate') {
-          toolResult = `QR Code: https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(args.text)}`;
-        }
-        else if (toolName === 'password_generate') {
-          const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-          let pass = "";
-          for (let i = 0; i < (args.length || 16); i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-          toolResult = `Password: <code>${pass}</code>`;
-        }
 
-        // Kirim hasil tool ke AI
+        // Kirim hasil tool ke AI untuk dirangkum
         const finalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
@@ -195,26 +150,26 @@ export default async function handler(request, response) {
           })
         });
         const finalData = await finalRes.json();
-        const finalReply = finalData.choices[0]?.message?.content || "Gagal merangkum hasil tool.";
+        const finalReply = finalData.choices[0]?.message?.content || "Gagal merangkum hasil.";
         
         await sendMsg(finalReply, message.message_id);
 
       } catch (err) {
         await sendMsg(`❌ Gagal eksekusi tool ${toolName}: ${err.message}`, message.message_id);
       }
-      return;
+      return response.status(200).send('OK');
     }
 
-    // =======================================================
-    // JIKA CUMA NGOBROL
-    // =======================================================
+    // Jika cuma ngobrol
     const aiReply = aiMessage?.content;
     if (aiReply) {
       await sendMsg(aiReply, message.message_id);
     }
+    return response.status(200).send('OK');
 
   } catch (error) {
     console.error('FATAL ERROR:', error.message);
-    await sendMsg(`❌ FATAL ERROR: ${error.message}`, message.message_id);
+    await sendMsg(`❌ FATAL ERROR: ${error.message}`);
+    return response.status(200).send('OK');
   }
 }
