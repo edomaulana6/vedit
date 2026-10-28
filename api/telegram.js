@@ -81,29 +81,26 @@ export default async function handler(request, response) {
       { type: "function", function: { name: "weather", description: "Cek cuaca", parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] } } },
       { type: "function", function: { name: "crypto_price", description: "Harga crypto", parameters: { type: "object", properties: { coin: { type: "string" } }, required: ["coin"] } } },
       { type: "function", function: { name: "create_website", description: "Bikin aplikasi web", parameters: { type: "object", properties: { tema: { type: "string" } }, required: ["tema"] } } },
-      
-      // --- TOOLS DINAMIS (AI BIKIN SENDIRI SEKALI PAKAI) ---
-      { type: "function", function: { name: "run_ephemeral_js", description: "Gunakan ini untuk MENULIS DAN MENJALANKAN kode JavaScript baru (sekali pakai) jika user meminta tool/fitur yang belum ada. Contoh: hitung zodiak, parsing data rumit, tool custom. JANGAN simpan kode, langsung eksekusi.", parameters: { type: "object", properties: { code: { type: "string", description: "Kode JS murni. Gunakan console.log() untuk output." } }, required: ["code"] } } }
+      { type: "function", function: { name: "run_ephemeral_js", description: "Tulis & jalankan kode JS baru (sekali pakai) untuk tool/fitur yang belum ada. WAJIB pakai console.log() untuk output.", parameters: { type: "object", properties: { code: { type: "string", description: "Kode JS murni. Gunakan console.log() untuk output." } }, required: ["code"] } } }
     ];
 
-    // SYSTEM PROMPT ELITE (ANTI NOLAK, SELF-CODING)
-    const systemPrompt = `Kamu adalah VEdit, AI Agent Otonom tingkat dewa. Nama user: "${userName}".
+    // SYSTEM PROMPT SUPER TEGAS
+    const systemPrompt = `Kamu adalah VEdit, AI Agent Otonom. Nama user: "${userName}".
 GAYA BICARA: Santai, luwes, gak kaku. Pakai "gue/lo".
 
 ${memoryContext}
 
 ⚠️ ATURAN MUTLAK (KAMU ADALAH AGENT PEMBUAT TOOL):
-1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada di tool bawaan (misal: tool zodiak, tool hitung umur, tool parsing teks), KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
-2. Alurnya: Panggil 'run_ephemeral_js' dengan kode JS buatan lo. Tunggu hasil output-nya, lalu sampaikan ke user.
-3. Kodenya bersifat SEKALI PAKAI. Jangan simpan di database. Kalau user minta lagi besok, tulis kode baru lagi.
-4. JANGAN PERNAH nolak permintaan user dengan alasan "gue gak punya tool itu". Bikin aja kodenya sekarang!
-5. JANGAN ngasih teori/brosur. LANGSUNG EKSEKUSI pakai tool.`;
+1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada di tool bawaan, KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
+2. Jika pakai 'run_ephemeral_js', kamu WAJIB memastikan kode JS yang kamu tulis menggunakan 'console.log()' di akhir untuk menampilkan hasil. Kalau tidak pakai console.log, output akan kosong dan kamu gagal.
+3. JANGAN PERNAH nolak permintaan user dengan alasan "gue gak punya tool itu". Bikin aja kodenya sekarang!
+4. JANGAN ngasih teori/brosur. LANGSUNG EKSEKUSI pakai tool.`;
 
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', 
       headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen/qwen3.8-27b', // <--- MODEL QWEN SESUAI SARAN LO
+        model: 'llama-3.3-70b-versatile', // Gue balikin ke Llama karena lebih stabil buat tool calling
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
         tools: tools, tool_choice: 'auto', temperature: 0.5, max_tokens: 500
       })
@@ -144,16 +141,35 @@ ${memoryContext}
           toolResult = d[args.coin.toLowerCase()] ? `Harga: $${d[args.coin.toLowerCase()].usd} / Rp${d[args.coin.toLowerCase()].idr}` : "Koin gak ada.";
         }
         
-        // --- EKSEKUSI TOOL DINAMIS (SEKALI PAKAI) ---
+        // --- EKSEKUSI TOOL DINAMIS (FIX BUG) ---
         else if (toolName === 'run_ephemeral_js') {
           await sendMsg(`⚡ <i>AI lagi nulis kode tool baru buat lo...</i>`, message.message_id);
           
-          const pistonRes = await fetch('https://emkc.org/api/v2/piston/execute', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language: 'javascript', version: '18.15.0', files: [{ content: args.code }] })
-          });
-          const pistonData = await pistonRes.json();
-          toolResult = pistonData.run?.output || "Kode gagal dieksekusi atau tidak ada output.";
+          try {
+            // Tambah timeout biar gak nge-hang
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000); 
+            
+            const pistonRes = await fetch('https://emkc.org/api/v2/piston/execute', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ language: 'javascript', version: '18.15.0', files: [{ content: args.code }] }),
+              signal: controller.signal
+            });
+            clearTimeout(timeout);
+            
+            const pistonData = await pistonRes.json();
+            
+            // Cek output, kalau kosong kasih fallback
+            if (pistonData.run && pistonData.run.output && pistonData.run.output.trim() !== "") {
+              toolResult = pistonData.run.output;
+            } else if (pistonData.run && pistonData.run.stderr) {
+              toolResult = `⚠️ Kode jalan tapi ada error:\n${pistonData.run.stderr}`;
+            } else {
+              toolResult = `⚠️ Kode berhasil dieksekusi, tapi AI lupa nambahin 'console.log()' jadi hasilnya kosong. Minta AI tulis ulang pakai console.log!`;
+            }
+          } catch (e) {
+            toolResult = `❌ Gagal eksekusi kode: ${e.message}`;
+          }
         }
 
         else if (toolName === 'create_website') {
@@ -162,7 +178,7 @@ ${memoryContext}
           const webPrompt = `Bikin web bertema: "${tema}". Balas HANYA <!DOCTYPE html>... </html>. Wajib ada <script> dan CSS modern.`;
           const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'qwen/qwen3.8-27b', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
+            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
           });
           const webData = await webRes.json();
           let finalKode = webData.choices[0]?.message?.content || "";
@@ -183,7 +199,7 @@ ${memoryContext}
         const finalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            model: 'qwen/qwen3.8-27b', 
+            model: 'llama-3.3-70b-versatile', 
             messages: [
               { role: 'system', content: systemPrompt }, 
               { role: 'user', content: userText },
