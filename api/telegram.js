@@ -84,23 +84,23 @@ export default async function handler(request, response) {
       { type: "function", function: { name: "run_ephemeral_js", description: "Tulis & jalankan kode JS baru (sekali pakai) untuk tool/fitur yang belum ada. WAJIB pakai console.log() untuk output.", parameters: { type: "object", properties: { code: { type: "string", description: "Kode JS murni. Gunakan console.log() untuk output." } }, required: ["code"] } } }
     ];
 
-    // SYSTEM PROMPT SUPER TEGAS
+    // SYSTEM PROMPT (FOKUS EKSEKUSI)
     const systemPrompt = `Kamu adalah VEdit, AI Agent Otonom. Nama user: "${userName}".
 GAYA BICARA: Santai, luwes, gak kaku. Pakai "gue/lo".
 
 ${memoryContext}
 
-⚠️ ATURAN MUTLAK (KAMU ADALAH AGENT PEMBUAT TOOL):
-1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada di tool bawaan, KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
-2. Jika pakai 'run_ephemeral_js', kamu WAJIB memastikan kode JS yang kamu tulis menggunakan 'console.log()' di akhir untuk menampilkan hasil. Kalau tidak pakai console.log, output akan kosong dan kamu gagal.
+⚠️ ATURAN MUTLAK:
+1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada (misal: cek zodiak, hitung umur, tool custom), KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
+2. WAJIB pakai 'console.log()' di dalam kode JS yang kamu tulis, kalau tidak, hasilnya bakal kosong dan kamu dianggap gagal.
 3. JANGAN PERNAH nolak permintaan user dengan alasan "gue gak punya tool itu". Bikin aja kodenya sekarang!
-4. JANGAN ngasih teori/brosur. LANGSUNG EKSEKUSI pakai tool.`;
+4. JANGAN ngasih teori/brosur atau ngaku-ngaku udah ngecek. LANGSUNG EKSEKUSI pakai tool.`;
 
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', 
       headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // Gue balikin ke Llama karena lebih stabil buat tool calling
+        model: 'qwen/qwen3.8-27b', // <--- MODEL QWEN SESUAI SARAN LO
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
         tools: tools, tool_choice: 'auto', temperature: 0.5, max_tokens: 500
       })
@@ -108,7 +108,7 @@ ${memoryContext}
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
-      await sendMsg(`❌ API Error: ${errText.substring(0, 100)}`);
+      await sendMsg(`❌ API Error: ${errText.substring(0, 150)}`);
       return response.status(200).send('OK');
     }
 
@@ -146,7 +146,6 @@ ${memoryContext}
           await sendMsg(`⚡ <i>AI lagi nulis kode tool baru buat lo...</i>`, message.message_id);
           
           try {
-            // Tambah timeout biar gak nge-hang
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 15000); 
             
@@ -159,7 +158,6 @@ ${memoryContext}
             
             const pistonData = await pistonRes.json();
             
-            // Cek output, kalau kosong kasih fallback
             if (pistonData.run && pistonData.run.output && pistonData.run.output.trim() !== "") {
               toolResult = pistonData.run.output;
             } else if (pistonData.run && pistonData.run.stderr) {
@@ -178,7 +176,7 @@ ${memoryContext}
           const webPrompt = `Bikin web bertema: "${tema}". Balas HANYA <!DOCTYPE html>... </html>. Wajib ada <script> dan CSS modern.`;
           const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
+            body: JSON.stringify({ model: 'qwen/qwen3.8-27b', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
           });
           const webData = await webRes.json();
           let finalKode = webData.choices[0]?.message?.content || "";
@@ -199,7 +197,7 @@ ${memoryContext}
         const finalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            model: 'llama-3.3-70b-versatile', 
+            model: 'qwen/qwen3.8-27b', 
             messages: [
               { role: 'system', content: systemPrompt }, 
               { role: 'user', content: userText },
