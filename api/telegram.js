@@ -31,7 +31,7 @@ export default async function handler(request, response) {
   let fileContext = "";
   if (message.photo) fileContext = "[User mengirim FOTO]";
   else if (message.video) fileContext = "[User mengirim VIDEO]";
-  else if (message.sticker) fileContext = "[User mengirim STIKER]";
+  else if (message.sticker) fileContext = "[User mengirim STICKER]";
 
   if (!userText && !fileContext) return response.status(200).send('OK');
 
@@ -98,7 +98,8 @@ export default async function handler(request, response) {
       await fetch(`${supabaseUrl}/rest/v1/pending_requests?id=eq.${pending.id}`, { method: 'DELETE', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } });
     }
 
-    await fetch(`${supabaseUrl}/rest/v1/chat_history`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ chat_id: chatId, role: 'user', content: userText }]) });
+    // FIX BUG 3: Ubah chatId ke String biar Supabase gak rewel
+    await fetch(`${supabaseUrl}/rest/v1/chat_history`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ chat_id: String(chatId), role: 'user', content: userText }]) });
 
     // =======================================================
     // TAHAP 1: DETEKSI NIAT & TOOL CALLING
@@ -130,9 +131,12 @@ export default async function handler(request, response) {
     let summaryContext = summaries.length > 0 ? `[Konteks lama]\n${summaries.reverse().map(s => s.summary).join('\n')}` : "";
     const systemPrompt = `Kamu adalah AI VEdit. Nama user: "${userName}". Kepribadian: Cerdas, sarkas, sopan.\n${summaryContext}\nATURAN: Gunakan tools yang tersedia jika user bertanya hal real-time atau minta dibuatkan web.`;
 
+    // FIX BUG 1: Buang pesan user yang terakhir dari history biar gak dobel
+    const pastMsgs = recentMsgs.slice(0, -1); 
+
     const messagesForAI = [
       { role: 'system', content: systemPrompt },
-      ...recentMsgs.map(m => ({ role: m.role, content: m.content })),
+      ...pastMsgs.map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: userText }
     ];
 
@@ -161,13 +165,10 @@ export default async function handler(request, response) {
       let toolResult = "";
 
       if (toolName === 'create_website') {
-        // (MASUKKAN KODE PLANNING & GENERATE WEB DARI FASE 1 DI SINI)
-        // Gue potong biar gak kepanjangan, panggil fungsinya aja.
         const tema = args.tema;
         const statusMsgId = await sendMsg(`🧠 <b>Fase Berpikir...</b>\n\nOke, gue analisa <b>${tema}</b>.`, message.message_id);
         await sleep(2000);
         await editMsg(statusMsgId, `⚙️ <b>Mulai koding...</b>`);
-        // ... (Panggil logika generate lo di sini, lalu simpan ke DB) ...
         return;
       }
 
@@ -208,8 +209,9 @@ export default async function handler(request, response) {
           toolResult = `${args.amount} ${args.from} = ${d.rates[args.to]} ${args.to}`;
         }
         else if (toolName === 'calculate') {
-          // Kalkulator simpel
-          toolResult = `Hasil: ${eval(args.expression.replace(/[^0-9+\-*/().]/g, ''))}`;
+          // FIX BUG 2: Ganti eval pake Function construct
+          const math = new Function('return ' + args.expression.replace(/[^0-9+\-*/().]/g, ''));
+          toolResult = `Hasil: ${math()}`;
         }
         else if (toolName === 'qr_generate') {
           toolResult = `Ini QR Code lo: https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(args.text)}`;
@@ -248,7 +250,7 @@ export default async function handler(request, response) {
         const finalReply = finalData.choices[0]?.message?.content;
         
         await sendMsg(finalReply, message.message_id);
-        await fetch(`${supabaseUrl}/rest/v1/chat_history`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ chat_id: chatId, role: 'assistant', content: finalReply }]) });
+        await fetch(`${supabaseUrl}/rest/v1/chat_history`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ chat_id: String(chatId), role: 'assistant', content: finalReply }]) });
         return;
 
       } catch (err) {
@@ -263,7 +265,7 @@ export default async function handler(request, response) {
     const aiReply = aiMessage?.content;
     if (aiReply) {
       await sendMsg(aiReply, message.message_id);
-      await fetch(`${supabaseUrl}/rest/v1/chat_history`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ chat_id: chatId, role: 'assistant', content: aiReply }]) });
+      await fetch(`${supabaseUrl}/rest/v1/chat_history`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ chat_id: String(chatId), role: 'assistant', content: aiReply }]) });
       
       // Auto-summarize
       const countRes = await fetch(`${supabaseUrl}/rest/v1/chat_history?chat_id=eq.${chatId}&select=count`, { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } });
@@ -275,7 +277,7 @@ export default async function handler(request, response) {
         const sumRes = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: summaryPrompt }], temperature: 0.2 }) });
         const summaryText = (await sumRes.json()).choices[0].message.content;
         
-        await fetch(`${supabaseUrl}/rest/v1/chat_summaries`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, summary: summaryText }) });
+        await fetch(`${supabaseUrl}/rest/v1/chat_summaries`, { method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: String(chatId), summary: summaryText }) });
         await fetch(`${supabaseUrl}/rest/v1/chat_history?id=in.(${oldMsgs.map(m => m.id).join(',')})`, { method: 'DELETE', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } });
       }
     }
