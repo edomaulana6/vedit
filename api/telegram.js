@@ -9,11 +9,10 @@ export default async function handler(request, response) {
   const groqApiKey = process.env.GROQ_API_KEY;
   const tavilyKey = process.env.TAVILY_API_KEY;
 
-  // 1. Handle Tombol Menu
   if (callback_query) {
     await fetch(`https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ callback_query_id: callback_query.id, text: "Siap! Tinggal ketik aja apa yang lo mau." })
+      body: JSON.stringify({ callback_query_id: callback_query.id, text: "Siap!" })
     });
     return response.status(200).send('OK');
   }
@@ -26,20 +25,17 @@ export default async function handler(request, response) {
   
   if (!userText) return response.status(200).send('OK');
 
-  // Helper Kirim Pesan
-  const sendMsg = async (text, replyTo = null, replyMarkup = null) => {
-    const payload = { chat_id: chatId, text: text, parse_mode: 'HTML' };
+  const sendMsg = async (text, replyTo = null) => {
+    const payload = { chat_id: chatId, text: text, parse_mode: 'HTML', disable_web_page_preview: true };
     if (replyTo) payload.reply_to_message_id = replyTo;
-    if (replyMarkup) payload.reply_markup = replyMarkup;
     try {
       const res = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
       return (await res.json()).result?.message_id;
-    } catch (e) { console.error("Gagal kirim pesan:", e.message); }
+    } catch (e) {}
   };
 
-  // Helper Typing
   const sendTyping = async () => {
     try {
       await fetch(`https://api.telegram.org/bot${telegramToken}/sendChatAction`, {
@@ -48,20 +44,17 @@ export default async function handler(request, response) {
     } catch (e) {}
   };
 
-  // 2. Handle Command Dasar
   if (userText === '/start' || userText === '/tools') {
-    const menuText = `Halo <b>${userName}</b>! 👋\n\nGue VEdit. Anggap aja gue temen ngobrol lo yang kebetulan punya akses ke internet, bisa bikinin website, dan pinter ngitung.\n\nTinggal ketik aja natural kayak ngobrol biasa.`;
-    const keyboard = { inline_keyboard: [[{ text: '🌐 Bikin Web', callback_data: 'tool_web' }, { text: '🔍 Cari Info', callback_data: 'tool_search' }]] };
-    await sendMsg(menuText, message.message_id, keyboard);
+    const menuText = `Halo <b>${userName}</b>! 👋\n\nGue VEdit. Gue punya AI yang bisa <b>nulis kode sendiri</b> buat nyelesaiin tugas lo. Mau bikin tool baru, hitung rumit, atau bikin web, tinggal minta aja natural!`;
+    await sendMsg(menuText, message.message_id);
     return response.status(200).send('OK');
   }
 
-  // 3. Proses Utama
   try {
     if (!groqApiKey) return await sendMsg("Sori, otak gue (Groq API) lagi offline.") && response.status(200).send('OK');
     await sendTyping();
 
-    // --- MEMORY ---
+    // MEMORY
     let memoryContext = "";
     try {
       const [sumRes, histRes] = await Promise.all([
@@ -77,48 +70,54 @@ export default async function handler(request, response) {
       }
     } catch (e) { console.log("Memory error:", e.message); }
 
-    // Simpan chat user
     fetch(`${supabaseUrl}/rest/v1/chat_history`, { 
       method: 'POST', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' }, 
       body: JSON.stringify([{ chat_id: String(chatId), role: 'user', content: userText }]) 
     }).catch(() => {});
 
-    // --- TOOLS DEFINITION ---
+    // TOOLS DEFINITION
     const tools = [
       { type: "function", function: { name: "web_search", description: "Cari info terbaru", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } },
       { type: "function", function: { name: "weather", description: "Cek cuaca", parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] } } },
       { type: "function", function: { name: "crypto_price", description: "Harga crypto", parameters: { type: "object", properties: { coin: { type: "string" } }, required: ["coin"] } } },
-      { type: "function", function: { name: "calculate", description: "Kalkulator", parameters: { type: "object", properties: { expression: { type: "string" } }, required: ["expression"] } } },
-      { type: "function", function: { name: "run_javascript", description: "Logika rumit/zodiak", parameters: { type: "object", properties: { code: { type: "string" } }, required: ["code"] } } },
-      { type: "function", function: { name: "create_website", description: "Bikin aplikasi web", parameters: { type: "object", properties: { tema: { type: "string" } }, required: ["tema"] } } }
+      { type: "function", function: { name: "create_website", description: "Bikin aplikasi web", parameters: { type: "object", properties: { tema: { type: "string" } }, required: ["tema"] } } },
+      
+      // --- TOOLS DINAMIS (AI BIKIN SENDIRI SEKALI PAKAI) ---
+      { type: "function", function: { name: "run_ephemeral_js", description: "Gunakan ini untuk MENULIS DAN MENJALANKAN kode JavaScript baru (sekali pakai) jika user meminta tool/fitur yang belum ada. Contoh: hitung zodiak, parsing data rumit, tool custom. JANGAN simpan kode, langsung eksekusi.", parameters: { type: "object", properties: { code: { type: "string", description: "Kode JS murni. Gunakan console.log() untuk output." } }, required: ["code"] } } }
     ];
 
-    const systemPrompt = `Kamu adalah VEdit, asisten AI pribadi. Nama user: "${userName}".
-GAYA BICARA: Santai, luwes, gak kaku, kayak temen ngobrol. Jangan formal. Pakai "gue/lo".
-${memoryContext}
-ATURAN: Panggil tool jika butuh info real-time atau hitungan.`;
+    // SYSTEM PROMPT ELITE (ANTI NOLAK, SELF-CODING)
+    const systemPrompt = `Kamu adalah VEdit, AI Agent Otonom tingkat dewa. Nama user: "${userName}".
+GAYA BICARA: Santai, luwes, gak kaku. Pakai "gue/lo".
 
-    // --- PANGGIL GROQ (Pakai Model Qwen) ---
+${memoryContext}
+
+⚠️ ATURAN MUTLAK (KAMU ADALAH AGENT PEMBUAT TOOL):
+1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada di tool bawaan (misal: tool zodiak, tool hitung umur, tool parsing teks), KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
+2. Alurnya: Panggil 'run_ephemeral_js' dengan kode JS buatan lo. Tunggu hasil output-nya, lalu sampaikan ke user.
+3. Kodenya bersifat SEKALI PAKAI. Jangan simpan di database. Kalau user minta lagi besok, tulis kode baru lagi.
+4. JANGAN PERNAH nolak permintaan user dengan alasan "gue gak punya tool itu". Bikin aja kodenya sekarang!
+5. JANGAN ngasih teori/brosur. LANGSUNG EKSEKUSI pakai tool.`;
+
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', 
       headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen/qwen3.8-27b', // <--- MODEL QWEN SESUAI SARAN LO
+        model: 'llama-3.3-70b-versatile', 
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
-        tools: tools, tool_choice: 'auto', temperature: 0.6, max_tokens: 500
+        tools: tools, tool_choice: 'auto', temperature: 0.5, max_tokens: 500
       })
     });
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
-      await sendMsg(`❌ API Error: ${errText.substring(0, 150)}`);
+      await sendMsg(`❌ API Error: ${errText.substring(0, 100)}`);
       return response.status(200).send('OK');
     }
 
     const aiData = await aiRes.json();
     const aiMessage = aiData.choices[0]?.message;
 
-    // --- EKSEKUSI TOOL ---
     if (aiMessage.tool_calls) {
       const toolCall = aiMessage.tool_calls[0];
       const toolName = toolCall.function.name;
@@ -144,25 +143,26 @@ ATURAN: Panggil tool jika butuh info real-time atau hitungan.`;
           const d = await r.json();
           toolResult = d[args.coin.toLowerCase()] ? `Harga: $${d[args.coin.toLowerCase()].usd} / Rp${d[args.coin.toLowerCase()].idr}` : "Koin gak ada.";
         }
-        else if (toolName === 'calculate') {
-          const math = new Function('return ' + args.expression.replace(/[^0-9+\-*/().]/g, ''));
-          toolResult = `Hasil: ${math()}`;
-        }
-        else if (toolName === 'run_javascript') {
+        
+        // --- EKSEKUSI TOOL DINAMIS (SEKALI PAKAI) ---
+        else if (toolName === 'run_ephemeral_js') {
+          await sendMsg(`⚡ <i>AI lagi nulis kode tool baru buat lo...</i>`, message.message_id);
+          
           const pistonRes = await fetch('https://emkc.org/api/v2/piston/execute', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ language: 'javascript', version: '18.15.0', files: [{ content: args.code }] })
           });
           const pistonData = await pistonRes.json();
-          toolResult = pistonData.run?.output || "Kodenya error.";
+          toolResult = pistonData.run?.output || "Kode gagal dieksekusi atau tidak ada output.";
         }
+
         else if (toolName === 'create_website') {
           const tema = args.tema;
           await sendMsg(`Siap, gue otak-atik dulu web <b>${tema}</b>-nya...`, message.message_id);
           const webPrompt = `Bikin web bertema: "${tema}". Balas HANYA <!DOCTYPE html>... </html>. Wajib ada <script> dan CSS modern.`;
           const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'qwen/qwen3.8-27b', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
+            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
           });
           const webData = await webRes.json();
           let finalKode = webData.choices[0]?.message?.content || "";
@@ -183,7 +183,7 @@ ATURAN: Panggil tool jika butuh info real-time atau hitungan.`;
         const finalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            model: 'qwen/qwen3.8-27b', 
+            model: 'llama-3.3-70b-versatile', 
             messages: [
               { role: 'system', content: systemPrompt }, 
               { role: 'user', content: userText },
@@ -197,12 +197,11 @@ ATURAN: Panggil tool jika butuh info real-time atau hitungan.`;
         await sendMsg(finalReply, message.message_id);
 
       } catch (err) {
-        await sendMsg(`Aduh, error pas pake tool: ${err.message}`, message.message_id);
+        await sendMsg(`Aduh, error pas eksekusi: ${err.message}`, message.message_id);
       }
       return response.status(200).send('OK');
     }
 
-    // --- JAWABAN BIASA ---
     if (aiMessage?.content) {
       await sendMsg(aiMessage.content, message.message_id);
     }
