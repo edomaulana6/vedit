@@ -103,7 +103,7 @@ ${memoryContext}
       method: 'POST', 
       headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', 
+        model: 'qwen/qwen3.8-27b', // <--- MODEL QWEN SESUAI SARAN LO
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
         tools: tools, tool_choice: 'auto', temperature: 0.5, max_tokens: 500
       })
@@ -162,7 +162,7 @@ ${memoryContext}
           const webPrompt = `Bikin web bertema: "${tema}". Balas HANYA <!DOCTYPE html>... </html>. Wajib ada <script> dan CSS modern.`;
           const webRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
+            body: JSON.stringify({ model: 'qwen/qwen3.8-27b', messages: [{ role: 'user', content: webPrompt }], temperature: 0.3, max_tokens: 4096 })
           });
           const webData = await webRes.json();
           let finalKode = webData.choices[0]?.message?.content || "";
@@ -183,7 +183,7 @@ ${memoryContext}
         const finalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            model: 'llama-3.3-70b-versatile', 
+            model: 'qwen/qwen3.8-27b', 
             messages: [
               { role: 'system', content: systemPrompt }, 
               { role: 'user', content: userText },
