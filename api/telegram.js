@@ -33,7 +33,7 @@ export default async function handler(request, response) {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
       return (await res.json()).result?.message_id;
-    } catch (e) {}
+    } catch (e) { console.log("Gagal kirim:", e.message); }
   };
 
   const sendTyping = async () => {
@@ -45,7 +45,7 @@ export default async function handler(request, response) {
   };
 
   if (userText === '/start' || userText === '/tools') {
-    const menuText = `Halo <b>${userName}</b>! 👋\n\nGue VEdit. Gue punya AI yang bisa <b>nulis kode sendiri</b> buat nyelesaiin tugas lo. Mau bikin tool baru, hitung rumit, atau bikin web, tinggal minta aja natural!`;
+    const menuText = `Halo <b>${userName}</b>! 👋\n\nGue VEdit. Gue bisa <b>nulis kode sendiri</b> buat nyelesaiin tugas lo. Mau bikin tool baru, hitung rumit, atau bikin web, tinggal minta aja natural!`;
     await sendMsg(menuText, message.message_id);
     return response.status(200).send('OK');
   }
@@ -84,23 +84,23 @@ export default async function handler(request, response) {
       { type: "function", function: { name: "run_ephemeral_js", description: "Tulis & jalankan kode JS baru (sekali pakai) untuk tool/fitur yang belum ada. WAJIB pakai console.log() untuk output.", parameters: { type: "object", properties: { code: { type: "string", description: "Kode JS murni. Gunakan console.log() untuk output." } }, required: ["code"] } } }
     ];
 
-    // SYSTEM PROMPT (FOKUS EKSEKUSI)
+    // SYSTEM PROMPT
     const systemPrompt = `Kamu adalah VEdit, AI Agent Otonom. Nama user: "${userName}".
 GAYA BICARA: Santai, luwes, gak kaku. Pakai "gue/lo".
 
 ${memoryContext}
 
 ⚠️ ATURAN MUTLAK:
-1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada (misal: cek zodiak, hitung umur, tool custom), KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
-2. WAJIB pakai 'console.log()' di dalam kode JS yang kamu tulis, kalau tidak, hasilnya bakal kosong dan kamu dianggap gagal.
-3. JANGAN PERNAH nolak permintaan user dengan alasan "gue gak punya tool itu". Bikin aja kodenya sekarang!
-4. JANGAN ngasih teori/brosur atau ngaku-ngaku udah ngecek. LANGSUNG EKSEKUSI pakai tool.`;
+1. KAMU BISA BIKIN TOOL BARU SENDIRI! Jika user minta fitur yang gak ada, KAMU WAJIB nulis kodenya pakai tool 'run_ephemeral_js'.
+2. WAJIB pakai 'console.log()' di dalam kode JS yang kamu tulis, kalau tidak, hasilnya bakal kosong dan kamu gagal.
+3. JANGAN PERNAH nolak permintaan user. Bikin aja kodenya sekarang!
+4. JANGAN ngasih teori/brosur. LANGSUNG EKSEKUSI.`;
 
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', 
       headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen/qwen3.8-27b', // <--- MODEL QWEN SESUAI SARAN LO
+        model: 'qwen/qwen3.8-27b', 
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
         tools: tools, tool_choice: 'auto', temperature: 0.5, max_tokens: 500
       })
@@ -125,7 +125,7 @@ ${memoryContext}
         if (toolName === 'web_search') {
           const r = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: tavilyKey, query: args.query, max_results: 3 }) });
           const d = await r.json();
-          toolResult = d.results ? d.results.map(x => `- ${x.title}: ${x.content}`).join('\n') : "Gak nemu apa-apa.";
+          toolResult = d.results && d.results.length > 0 ? d.results.map(x => `- ${x.title}: ${x.content}`).join('\n') : "Hasil pencarian tidak ditemukan.";
         } 
         else if (toolName === 'weather') {
           const geo = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.city)}&count=1`)).json();
@@ -163,7 +163,8 @@ ${memoryContext}
             } else if (pistonData.run && pistonData.run.stderr) {
               toolResult = `⚠️ Kode jalan tapi ada error:\n${pistonData.run.stderr}`;
             } else {
-              toolResult = `⚠️ Kode berhasil dieksekusi, tapi AI lupa nambahin 'console.log()' jadi hasilnya kosong. Minta AI tulis ulang pakai console.log!`;
+              // FALLBACK: Kalau kode kosong, paksa AI buat tau kalau ini gagal
+              toolResult = `⚠️ Kode berhasil dieksekusi, tapi AI lupa nambahin 'console.log()' jadi hasilnya kosong.`;
             }
           } catch (e) {
             toolResult = `❌ Gagal eksekusi kode: ${e.message}`;
@@ -193,7 +194,7 @@ ${memoryContext}
           }
         }
 
-        // Rangkum hasil tool
+        // --- RANGKUM HASIL TOOL (ANTI-STAK) ---
         const finalRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST', headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -207,8 +208,14 @@ ${memoryContext}
           })
         });
         const finalData = await finalRes.json();
-        const finalReply = finalData.choices[0]?.message?.content || toolResult;
-        await sendMsg(finalReply, message.message_id);
+        const finalReply = finalData.choices[0]?.message?.content;
+
+        // FIX BUG STAK: Kalau AI bengong (null), kirim raw output Piston-nya!
+        if (finalReply) {
+          await sendMsg(finalReply, message.message_id);
+        } else {
+          await sendMsg(`✅ <b>Hasil dari AI:</b>\n\n<code>${toolResult}</code>`, message.message_id);
+        }
 
       } catch (err) {
         await sendMsg(`Aduh, error pas eksekusi: ${err.message}`, message.message_id);
@@ -216,8 +223,12 @@ ${memoryContext}
       return response.status(200).send('OK');
     }
 
+    // Jika cuma ngobrol
     if (aiMessage?.content) {
       await sendMsg(aiMessage.content, message.message_id);
+    } else {
+      // FIX BUG STAK: Kalau AI gak ngasih jawaban sama sekali
+      await sendMsg("Hmm, gue bingung mau jawab apa. Coba tanya lagi ya.", message.message_id);
     }
     
     return response.status(200).send('OK');
